@@ -148,11 +148,14 @@ class Layout(wx.Frame):
         self.status.PushStatusText("Working...")
         time.sleep(3)
         self.status.PopStatusText()
-        
+
+class App(wx.App):
+    def OnInit(self):
+        L = Layout(None, title='Layout test')
+        L.Show()
+        return True
 
 
 if __name__ == "__main__":
-    app = wx.App()
-    L = Layout(None, title='Layout test')
-    L.Show()
+    app = App()
     app.MainLoop()
