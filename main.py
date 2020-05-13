@@ -1,5 +1,9 @@
 import wx
 import time
+import asyncio
+from asyncio import get_event_loop
+from wxasync import AsyncBind, WxAsyncApp, StartCoroutine
+
 
 class SubPanel(wx.Panel):
     '''
@@ -108,7 +112,7 @@ class Layout(wx.Frame):
         self.Bind(wx.EVT_MENU, self.LoadData, loadItem)
         # Dummy option to test status bar
         statItem = dataMenu.Append(wx.ID_ANY, 'Compute', 'Think really hard')
-        self.Bind(wx.EVT_MENU, self.SlowFunc, statItem)
+        self.Bind(wx.EVT_MENU, lambda x: StartCoroutine(self.SlowFunc(x), self), statItem)
 
         # Add submenus to overall menu bar
         menubar.Append(fileMenu, '&File')
@@ -141,15 +145,15 @@ class Layout(wx.Frame):
         # Send path information to data manager to be loaded
         print("Load was clicked.")
     
-    def SlowFunc(self, e):
+    async def SlowFunc(self, e):
         '''
         Dummy function to test status bar updating
         '''
         self.status.PushStatusText("Working...")
-        time.sleep(3)
+        await asyncio.sleep(5)
         self.status.PopStatusText()
 
-class App(wx.App):
+class App(WxAsyncApp):
     def OnInit(self):
         L = Layout(None, title='Layout test')
         L.Show()
@@ -158,4 +162,6 @@ class App(wx.App):
 
 if __name__ == "__main__":
     app = App()
-    app.MainLoop()
+    loop = get_event_loop()
+    loop.run_until_complete(app.MainLoop())
+    
