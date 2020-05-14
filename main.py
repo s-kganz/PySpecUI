@@ -3,6 +3,7 @@ import time
 import asyncio
 from asyncio import get_event_loop
 from wxasync import AsyncBind, WxAsyncApp, StartCoroutine
+from wxmplot import PlotPanel
 
 
 class SubPanel(wx.Panel):
@@ -85,6 +86,21 @@ class TextPanel(SubPanel):
 
         self.panel.SetSizer(vbox)
 
+class PlotRegion(SubPanel):
+    def __init__(self, parent):
+        super(PlotRegion, self).__init__(parent)
+    
+    def InitUI(self):
+        self.plot_data = TextPanel(self.panel, text="Plot data goes here")
+        self.plot_panel = PlotPanel(self.panel)
+
+        vbox = wx.BoxSizer(wx.VERTICAL)
+
+        vbox.Add(self.plot_panel, 2, wx.EXPAND)
+        vbox.Add(self.plot_data.GetPanel(), 1, wx.EXPAND)
+
+        self.panel.SetSizer(vbox)
+
 class Layout(wx.Frame):
 
     def __init__(self, parent, title):
@@ -123,10 +139,10 @@ class Layout(wx.Frame):
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         # Create the subclassed panels
         hbox = wx.BoxSizer(wx.HORIZONTAL)
-        tp = TextPanel(panel, text="Sample Text")
+        plt = PlotRegion(panel)
         tab = TabPanel(panel, ntabs=3)
         # Create a second control
-        hbox.Add(tp.GetPanel(), 2, wx.EXPAND)
+        hbox.Add(plt.GetPanel(), 2, wx.EXPAND)
         hbox.Add(tab.GetPanel(), 1, wx.EXPAND)
         
         panel.SetSizerAndFit(hbox)
