@@ -6,12 +6,23 @@ the application interface.
 import wx
 from wx.lib.intctrl import IntCtrl
 from wx.lib import sized_controls
+from wx.lib.mixins.listctrl import ListCtrlAutoWidthMixin
 from wxasync import AsyncBind, WxAsyncApp, StartCoroutine
 from wxmplot import PlotPanel
 
 import time
 import os
 import asyncio
+
+class ResizeListCtrl(wx.ListCtrl, ListCtrlAutoWidthMixin):
+    '''
+    Adding the auto width mixin makes the ListCtrl resize itself properly
+    '''
+    def __init__(self, parent, ID=wx.ID_ANY, pos=wx.DefaultPosition,
+                 size=wx.DefaultSize, style=0):
+        wx.ListCtrl.__init__(self, parent, ID, pos, size, style)
+        ListCtrlAutoWidthMixin.__init__(self)
+        self.setResizeColumn(0)
 
 class LoadDialog(sized_controls.SizedDialog):
 
@@ -135,6 +146,7 @@ class TabPanel(SubPanel):
 
     def __init__(self, parent, datasrc, ntabs=4):
         self.ntabs = ntabs
+        self.trace_idx = 0
         super(TabPanel, self).__init__(parent, datasrc)
 
     def InitUI(self):
@@ -145,14 +157,24 @@ class TabPanel(SubPanel):
         nb = wx.Notebook(self.panel)
         # Create tab objects
         tabs = []
-        for i in range(self.ntabs):
-            p = wx.Panel(nb)
-            txt = wx.StaticText(p, label="Tab {}".format(i+1))
-            tabs.append(p)
 
+        # The first tab lists all data currently loaded
+        trace_pane = wx.Panel(nb)
+        trace_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.trace_list = ResizeListCtrl(trace_pane, size=(-1, 100), style=wx.LC_REPORT)
+        self.trace_list.InsertColumn(0, 'Name', width=-1)
+        self.trace_list.InsertColumn(1, 'Freq Unit', width=-1)
+        self.trace_list.InsertColumn(2, 'Spec Unit', width=-1)
+        trace_sizer.Add(self.trace_list, wx.EXPAND)
+        trace_pane.SetSizer(trace_sizer)
+        tabs.append(trace_pane)
+
+        # Names of each tab
+        names = ["Data"]
         # Create notebook object
+        assert(len(names) == len(tabs))
         for i in range(len(tabs)):
-            nb.AddPage(tabs[i], "Tab {}".format(i+1))
+            nb.AddPage(tabs[i], names[i])
 
         # Place notebook in a sizer so it expands to the size of the panel
         sizer = wx.BoxSizer()
@@ -262,7 +284,6 @@ class Layout(wx.Frame):
         Load a new data trace.
         '''
         # Create dialog box
-        # otherwise ask the user what new file to open
         with LoadDialog(self, title="Load a delimited file...") as dialog:
 
             if dialog.ShowModal() == wx.ID_CANCEL:
@@ -279,13 +300,13 @@ class Layout(wx.Frame):
                 'freqUnit' : dialog.freqUnitCtrl.GetValue(),
                 'specUnit' : dialog.specUnitCtrl.GetValue()
             }
-
+            traceInd = -1
             try:
                 traceInd = self.datasrc.addTraceFromCSV(path, options=options)
             except IOError as e:
                 wx.LogError("Cannot open file {}.".format(path))
                 wx.LogError(str(e))
-            print("The new trace is at index {}".format(traceInd))
+            
 
     async def SlowFunc(self, e):
         '''
