@@ -303,10 +303,12 @@ class Layout(wx.Frame):
             path = dialog.fileCtrl.GetPath()
             # Assemble remaining options into a dictionary
             delimStr = dialog.delimCtrl.GetString(dialog.delimCtrl.GetSelection())
+            commChar = dialog.commCtrl.GetValue()
+            if len(commChar) == 0: commChar = None
             options = {
                 'delimChoice' : delimStr,
                 'header' : dialog.headCtrl.GetValue(),
-                'commentChar' : dialog.commCtrl.GetValue(),
+                'commentChar' : commChar,
                 'freqColInd' : dialog.freqIndCtrl.GetValue(),
                 'skipCount' : dialog.skipCtrl.GetValue(),
                 'freqUnit' : dialog.freqUnitCtrl.GetValue(),
