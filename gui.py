@@ -59,7 +59,7 @@ class LoadDialog(sized_controls.SizedDialog):
 
         # Comment character
         wx.StaticText(parse_pane, label="Comment character: ")
-        self.commCtrl = wx.TextCtrl(parse_pane)
+        self.commCtrl = wx.TextCtrl(parse_pane, value='#')
         self.commCtrl.SetMaxLength(1)
 
         # Frequency column
