@@ -30,11 +30,22 @@ class DataSource(object):
         self.traces = []
 
         self.mode = 'ui' if self.app else 'repl'
+        self.delim_map = {
+            "Tab": '\t',
+            "Space": ' ',
+            "Comma": ','
+        }
 
-    def addTrace(self, file, **kwargs):
+    def addTraceFromCSV(self, file, options = {}):
+        '''
+        Attempt to parse a new Spectrum object and add it to the
+        data in memory.
+
+        Returns the index of the trace on a successful call.
+        '''
         # Attempt to read passed handle
         try:
-            df = pd.read_csv(file, **kwargs)
+            df = pd.read_csv(file)
         except Exception as e:
             raise IOError("Reading {} failed:\n".format(file) + str(e))
         
@@ -46,10 +57,9 @@ class DataSource(object):
             raise IOError("Reading dataframe with more than 2 dimensions is not supported")
         # Assume that the first column is the frequency column and the second
         #   is the spectral data
+
         self.traces.append(Spectrum(df))
-
-        del df
-
+        return len(self.traces) - 1 # last index
 
 
 
