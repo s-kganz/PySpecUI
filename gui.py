@@ -146,7 +146,7 @@ class TabPanel(SubPanel):
 
     def __init__(self, parent, datasrc, ntabs=4):
         self.ntabs = ntabs
-        self.trace_idx = 0
+        self.data_tab_idx = 0
         super(TabPanel, self).__init__(parent, datasrc)
 
     def InitUI(self):
@@ -181,7 +181,17 @@ class TabPanel(SubPanel):
         sizer.Add(nb, 1, wx.EXPAND)
 
         self.panel.SetSizer(sizer)
-
+    
+    def AddTrace(self, trace_idx):
+        print("adding trace at idx {}".format(trace_idx))
+        # Append a trace to the data tab and get its fields
+        spec = self.datasrc.traces[trace_idx]
+        fields = [spec.name, spec.frequnit, spec.specunit]
+        # Update the new row's fields
+        for i in range(len(fields)):
+            if i == 0: self.trace_list.InsertItem(self.data_tab_idx, fields[i])
+            else: self.trace_list.SetItem(self.data_tab_idx, i, fields[i])
+        self.data_tab_idx += 1
 
 class TextPanel(SubPanel):
     def __init__(self, parent, datasrc, text=wx.EmptyString):
@@ -265,11 +275,11 @@ class Layout(wx.Frame):
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         # Create the subclassed panels
         hbox = wx.BoxSizer(wx.HORIZONTAL)
-        plt = PlotRegion(panel, self.datasrc)
-        tab = TabPanel(panel, self.datasrc, ntabs=3)
+        self.plt_pane = PlotRegion(panel, self.datasrc)
+        self.tab_pane = TabPanel(panel, self.datasrc, ntabs=3)
         # Create a second control
-        hbox.Add(plt.GetPanel(), 2, wx.EXPAND)
-        hbox.Add(tab.GetPanel(), 1, wx.EXPAND)
+        hbox.Add(self.plt_pane.GetPanel(), 2, wx.EXPAND)
+        hbox.Add(self.tab_pane.GetPanel(), 1, wx.EXPAND)
 
         panel.SetSizerAndFit(hbox)
 
@@ -306,6 +316,11 @@ class Layout(wx.Frame):
             except IOError as e:
                 wx.LogError("Cannot open file {}.".format(path))
                 wx.LogError(str(e))
+                return
+            
+            if traceInd >= 0:
+                # Add the new trace to the tab panel
+                self.tab_pane.AddTrace(traceInd)
             
 
     async def SlowFunc(self, e):
