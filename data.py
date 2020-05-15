@@ -2,21 +2,28 @@
 Implementation of data manager class for handling spectra.
 '''
 import pandas as pd
+from os.path import basename
 
 class Spectrum(object):
     '''
     Container for pandas dataframe representing the spectrum
     and other metadata.
     '''
-    def __init__(self, df, freqcol=0, speccol=1):
+    def __init__(self, df, specunit="", frequnit="", 
+                 name="", freqcol=0, speccol=None):
+
+        # Assume that the passed df only has two columns
+        # TODO refactor to allow multi-column support.
+        speccol = 1 if freqcol == 0 else 0
+
         self.data = df.copy() 
         self.specname = df.columns[speccol]
         self.freqname = df.columns[freqcol]
         
-        self.specunits = "Unknown"
-        self.frequnits = "Unknown"
+        self.specunit = specunit
+        self.frequnit = frequnit
 
-        self.desc = "A spectrum."
+        self.name = name
 
 
 class DataSource(object):
@@ -45,7 +52,13 @@ class DataSource(object):
         '''
         # Attempt to read passed handle
         try:
-            df = pd.read_csv(file)
+            df = pd.read_csv(
+                file,
+                sep=self.delim_map[options["delimChoice"]],
+                header=0,
+                skiprows=options['skipCount'],
+                comment=options['commentChar']
+            )
         except Exception as e:
             raise IOError("Reading {} failed:\n".format(file) + str(e))
         
@@ -55,10 +68,16 @@ class DataSource(object):
             raise IOError("Reading multi-column spectra is not supported")
         if not df.ndim < 3:
             raise IOError("Reading dataframe with more than 2 dimensions is not supported")
-        # Assume that the first column is the frequency column and the second
-        #   is the spectral data
-
-        self.traces.append(Spectrum(df))
+        
+        # Pass remaining options to the spectrum constructor
+        name = basename(file)
+        self.traces.append(Spectrum(
+            df,
+            specunit=options['specUnit'],
+            frequnit=options['freqUnit'],
+            freqcol=options["freqColInd"],
+            name=name
+        ))
         return len(self.traces) - 1 # last index
 
 

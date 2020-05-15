@@ -51,6 +51,7 @@ class LoadDialog(sized_controls.SizedDialog):
         # Delimiter choice
         wx.StaticText(parse_pane, label="Delimiter: ")
         self.delimCtrl = wx.Choice(parse_pane, choices=["Tab", "Comma", "Space"])
+        self.delimCtrl.SetSelection(0)
 
         # Header choice
         wx.StaticText(parse_pane, label="Parse headers: ")
@@ -301,8 +302,9 @@ class Layout(wx.Frame):
             # Proceed loading the file chosen by the user
             path = dialog.fileCtrl.GetPath()
             # Assemble remaining options into a dictionary
+            delimStr = dialog.delimCtrl.GetString(dialog.delimCtrl.GetSelection())
             options = {
-                'delimChoice' : dialog.delimCtrl.GetSelection(),
+                'delimChoice' : delimStr,
                 'header' : dialog.headCtrl.GetValue(),
                 'commentChar' : dialog.commCtrl.GetValue(),
                 'freqColInd' : dialog.freqIndCtrl.GetValue(),
