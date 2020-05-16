@@ -202,16 +202,11 @@ class TabPanel(SubPanel):
         self.panel.SetSizer(sizer)
     
     def AddTrace(self, trace_idx):
-        print("adding trace at idx {}".format(trace_idx))
-        # Append a trace to the data tab and get its fields
+        # Get fields for the new trace
         spec = self.datasrc.traces[trace_idx]
-        fields = [spec.name, spec.frequnit, spec.specunit]
-        # Update the new row's fields
-        for i in range(len(fields)):
-            if i == 0: self.trace_list.InsertItem(self.data_tab_idx, fields[i])
-            else: self.trace_list.SetItem(self.data_tab_idx, i, fields[i])
-        self.data_tab_idx += 1
-        #self.UpdateRmButton(None)
+        fields = (spec.name, spec.frequnit, spec.specunit)
+        # Add a new row to the list control
+        self.trace_list.Append(fields)
 
     def ActivateRmButton(self, event):
         '''
@@ -228,8 +223,11 @@ class TabPanel(SubPanel):
     def RemoveTrace(self, event):
         '''
         Event handler to remove traces.
+        NOTE: The array of traces in the data manager should be in the exact
+              same order the array of traces shown in the list control.
         '''
-        print("Remove trace")
+        # Iterate over all items in the list. If one is selected, remove it.
+        pass
 
 class TextPanel(SubPanel):
     def __init__(self, parent, datasrc, text=wx.EmptyString):
