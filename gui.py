@@ -157,6 +157,7 @@ class DataTab(SubPanel):
     of the screen.
     '''
     def __init__(self, parent, datasrc):
+        self.btns = []
         super(DataTab, self).__init__(parent, datasrc)
     
     def InitUI(self):
@@ -180,22 +181,24 @@ class DataTab(SubPanel):
         self.rm_btn = wx.Button(trace_pane, label="Remove")
         self.rm_btn.Disable()  # start in disabled state
         trace_pane.Bind(wx.EVT_BUTTON, self.RemoveTrace, self.rm_btn)
+        self.btns.append(self.rm_btn)
 
         # Button for adding traces to the plot
         self.plot_btn = wx.Button(trace_pane, label="Add to plot")
         self.plot_btn.Disable()
         trace_pane.Bind(wx.EVT_BUTTON, self.OnPlot, self.plot_btn)
+        self.btns.append(self.plot_btn)
 
         btn_sizer.Add(self.rm_btn, wx.CENTER)
         btn_sizer.Add(self.plot_btn, wx.CENTER)
         trace_sizer.Add(btn_sizer, 0, wx.EXPAND)
         trace_pane.SetSizer(trace_sizer)
 
-        # Bind selection/deselection of list elements to updating the remove button
+        # Bind selection/deselection of list elements to updating buttons
         trace_pane.Bind(wx.EVT_LIST_ITEM_SELECTED,
-                        self.UpdateRmButton, self.trace_list)
+                        self.UpdateButtons, self.trace_list)
         trace_pane.Bind(wx.EVT_LIST_ITEM_DESELECTED,
-                        self.UpdateRmButton, self.trace_list)
+                        self.UpdateButtons, self.trace_list)
 
     def AddTrace(self, trace_idx):
         # Get fields for the new trace
@@ -204,15 +207,19 @@ class DataTab(SubPanel):
         # Add a new row to the list control
         self.trace_list.Append(fields)
 
-    def UpdateRmButton(self, event):
+    def UpdateButtons(self, event):
         '''
         Enable or Disable the removal button at the bottom of the data tab depending
         on if any of traces are selected.
         '''
         if any(self.trace_list.IsSelected(i) for i in range(0, self.trace_list.GetItemCount())):
-            self.rm_btn.Enable()
+            # Activate all buttons
+            for btn in self.btns:
+                btn.Enable()
         else:
-            self.rm_btn.Disable()
+            # Disable all buttons
+            for btn in self.btns:
+                btn.Disable()
 
     def RemoveTrace(self, event):
         '''
@@ -241,7 +248,12 @@ class DataTab(SubPanel):
         Add selected traces to the plot window, showing warnings about axis
         limits as necessary.
         '''
-        pass
+        # Determine which traces are selected and pass these to the plot pane
+        selected = [i for i in range(0, self.trace_list.GetItemCount()) \
+                    if self.trace_list.IsSelected(i)]
+
+        wx.GetTopLevelParent(self.panel).AddTracesToPlot(selected)
+
 
 
 class TabPanel(SubPanel):
@@ -411,6 +423,21 @@ class Layout(wx.Frame):
             if traceInd >= 0:
                 # Add the new trace to the tab panel
                 self.tab_pane.data_tab.AddTrace(traceInd)
+
+    def AddTracesToPlot(self, traces):
+        '''
+        Pull the given traces from the data manager and add them to the
+        plot.
+        '''
+        print("Adding traces {} to plot".format(str(traces)))
+        pass
+
+    def RemoveTracesFromPlot(self, traces):
+        '''
+        Remove the given traces from the plot window.
+        '''
+        print("Removing traces {} from plot".format(str(traces)))
+        pass
 
     async def SlowFunc(self, e):
         '''
