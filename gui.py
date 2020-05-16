@@ -185,8 +185,8 @@ class TabPanel(SubPanel):
         tabs.append(trace_pane)
 
         # Bind selection/deselection of list elements to updating the button
-        trace_pane.Bind(wx.EVT_LIST_ITEM_SELECTED, self.ActivateRmButton, self.trace_list)
-        trace_pane.Bind(wx.EVT_LIST_ITEM_DESELECTED, self.DeactivateRmButton, self.trace_list)
+        trace_pane.Bind(wx.EVT_LIST_ITEM_SELECTED, self.UpdateRmButton, self.trace_list)
+        trace_pane.Bind(wx.EVT_LIST_ITEM_DESELECTED, self.UpdateRmButton, self.trace_list)
 
         # Names of each tab
         names = ["Data"]
@@ -207,6 +207,16 @@ class TabPanel(SubPanel):
         fields = (spec.name, spec.frequnit, spec.specunit)
         # Add a new row to the list control
         self.trace_list.Append(fields)
+
+    def UpdateRmButton(self, event):
+        '''
+        Enable or Disable the removal button at the bottom of the data tab depending
+        on if any of traces are selected.
+        '''
+        if any(self.trace_list.IsSelected(i) for i in range(0, self.trace_list.GetItemCount())):
+            self.rm_btn.Enable()
+        else:
+            self.rm_btn.Disable()
 
     def ActivateRmButton(self, event):
         '''
