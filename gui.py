@@ -227,7 +227,19 @@ class TabPanel(SubPanel):
               same order the array of traces shown in the list control.
         '''
         # Iterate over all items in the list. If one is selected, remove it.
-        pass
+        i = 0
+        while i < self.trace_list.GetItemCount():
+            if self.trace_list.IsSelected(i):
+                self.trace_list.DeleteItem(i)
+                # Delete the trace from the data manager as well
+                # The assertion will fail if the data manager trace array
+                # is out of sync with the listctrl's array
+                try:
+                    assert(self.datasrc.DeleteTrace(i))
+                    continue # don't increment index if a deletion occurs
+                except:
+                    raise RuntimeError("Failed to delete trace at index {}".format(i))
+            i += 1
 
 class TextPanel(SubPanel):
     def __init__(self, parent, datasrc, text=wx.EmptyString):

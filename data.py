@@ -80,5 +80,14 @@ class DataSource(object):
         ))
         return len(self.traces) - 1 # last index
 
+    def DeleteTrace(self, i):
+        '''
+        Delete a trace from the manager
+        '''
+        if i >= 0 and i < len(self.traces):
+            self.traces.pop(i)
+            return True
+        else:
+            return False
 
 
