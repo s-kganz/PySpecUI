@@ -151,30 +151,18 @@ class SubPanel(wx.Panel):
         '''
         return self.panel
 
-
-class TabPanel(SubPanel):
+class DataTab(SubPanel):
     '''
-    Class implementing a notebook-style collection of panels.
+    Implements UI elements for the trace window on the right hand side
+    of the screen.
     '''
-
-    def __init__(self, parent, datasrc, ntabs=4):
-        self.ntabs = ntabs
-        self.data_tab_idx = 0
-        super(TabPanel, self).__init__(parent, datasrc)
-
+    def __init__(self, parent, datasrc):
+        super(DataTab, self).__init__(parent, datasrc)
+    
     def InitUI(self):
-        '''
-        Initialize self.ntabs panels
-        '''
-        # Create notebook object
-        nb = wx.Notebook(self.panel)
-        # Create tab objects
-        tabs = []
-
         # The first tab lists all data currently loaded
-        trace_pane = wx.Panel(nb)
+        trace_pane = self.panel
         trace_sizer = wx.BoxSizer(wx.VERTICAL)
-        main_sizer = wx.BoxSizer(wx.HORIZONTAL)
 
         # Mixin listctrl for selecting traces
         self.trace_list = ResizeListCtrl(
@@ -185,33 +173,29 @@ class TabPanel(SubPanel):
         self.trace_list.InsertColumn(2, 'Spec Unit', width=-1)
         trace_sizer.Add(self.trace_list, wx.EXPAND)
 
+        # Additional controls at the bottom of the data tab
+        btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
         # Button for removing traces
         self.rm_btn = wx.Button(trace_pane, label="Remove")
         self.rm_btn.Disable()  # start in disabled state
-        self.parent.Bind(wx.EVT_BUTTON, self.RemoveTrace, self.rm_btn)
-        trace_sizer.Add(self.rm_btn)
-        main_sizer.Add(trace_sizer, 1, wx.EXPAND)
-        trace_pane.SetSizer(main_sizer)
-        tabs.append(trace_pane)
+        trace_pane.Bind(wx.EVT_BUTTON, self.RemoveTrace, self.rm_btn)
 
-        # Bind selection/deselection of list elements to updating the button
+        # Button for adding traces to the plot
+        self.plot_btn = wx.Button(trace_pane, label="Add to plot")
+        self.plot_btn.Disable()
+        trace_pane.Bind(wx.EVT_BUTTON, self.OnPlot, self.plot_btn)
+
+        btn_sizer.Add(self.rm_btn, wx.CENTER)
+        btn_sizer.Add(self.plot_btn, wx.CENTER)
+        trace_sizer.Add(btn_sizer, 0, wx.EXPAND)
+        trace_pane.SetSizer(trace_sizer)
+
+        # Bind selection/deselection of list elements to updating the remove button
         trace_pane.Bind(wx.EVT_LIST_ITEM_SELECTED,
                         self.UpdateRmButton, self.trace_list)
         trace_pane.Bind(wx.EVT_LIST_ITEM_DESELECTED,
                         self.UpdateRmButton, self.trace_list)
-
-        # Names of each tab
-        names = ["Data"]
-        # Create notebook object
-        assert(len(names) == len(tabs))
-        for i in range(len(tabs)):
-            nb.AddPage(tabs[i], names[i])
-
-        # Place notebook in a sizer so it expands to the size of the panel
-        sizer = wx.BoxSizer()
-        sizer.Add(nb, 1, wx.EXPAND)
-
-        self.panel.SetSizer(sizer)
 
     def AddTrace(self, trace_idx):
         # Get fields for the new trace
@@ -251,7 +235,48 @@ class TabPanel(SubPanel):
                     raise RuntimeError(
                         "Failed to delete trace at index {}".format(i))
             i += 1
+    
+    def OnPlot(self, event):
+        '''
+        Add selected traces to the plot window, showing warnings about axis
+        limits as necessary.
+        '''
+        pass
 
+
+class TabPanel(SubPanel):
+    '''
+    Class implementing a notebook-style collection of panels.
+    '''
+
+    def __init__(self, parent, datasrc, ntabs=4):
+        self.ntabs = ntabs
+        self.data_tab_idx = 0
+        super(TabPanel, self).__init__(parent, datasrc)
+
+    def InitUI(self):
+        '''
+        Initialize self.ntabs panels
+        '''
+        # Create notebook object
+        nb = wx.Notebook(self.panel)
+        # Create tab objects
+        tabs = []
+        self.data_tab = DataTab(nb, self.datasrc)
+        tabs.append(self.data_tab.GetPanel())
+  
+        # Names of each tab
+        names = ["Data"]
+        # Create notebook object
+        assert(len(names) == len(tabs))
+        for i in range(len(tabs)):
+            nb.AddPage(tabs[i], names[i])
+
+        # Place notebook in a sizer so it expands to the size of the panel
+        sizer = wx.BoxSizer()
+        sizer.Add(nb, 1, wx.EXPAND)
+
+        self.panel.SetSizer(sizer)
 
 class TextPanel(SubPanel):
     def __init__(self, parent, datasrc, text=wx.EmptyString):
@@ -385,7 +410,7 @@ class Layout(wx.Frame):
 
             if traceInd >= 0:
                 # Add the new trace to the tab panel
-                self.tab_pane.AddTrace(traceInd)
+                self.tab_pane.data_tab.AddTrace(traceInd)
 
     async def SlowFunc(self, e):
         '''
