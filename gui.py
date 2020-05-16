@@ -14,28 +14,32 @@ import time
 import os
 import asyncio
 
+
 class ResizeListCtrl(wx.ListCtrl, ListCtrlAutoWidthMixin):
     '''
     Adding the auto width mixin makes the ListCtrl resize itself properly. Otherwise
     this is exactly the same as a typical ListCtrl.
     '''
+
     def __init__(self, parent, ID=wx.ID_ANY, pos=wx.DefaultPosition,
                  size=wx.DefaultSize, style=wx.LC_REPORT):
         wx.ListCtrl.__init__(self, parent, ID, pos, size, style)
         ListCtrlAutoWidthMixin.__init__(self)
         self.setResizeColumn(0)
 
+
 class LoadDialog(sized_controls.SizedDialog):
     '''
     Dialog box for loading a data file.
     '''
+
     def __init__(self, *args, **kwargs):
         super(LoadDialog, self).__init__(*args, **kwargs)
         self.pane = self.GetContentsPane()
         self.InitUI()
-    
+
     def InitUI(self):
-        
+
         file_pane = sized_controls.SizedPanel(self.pane)
         file_pane.SetSizerType('horizontal')
         file_pane.SetSizerProps(halign='left')
@@ -51,10 +55,11 @@ class LoadDialog(sized_controls.SizedDialog):
         parse_pane = sized_controls.SizedPanel(self.pane)
         parse_pane.SetSizerType('form')
         parse_pane.SetSizerProps(halign="left")
-        
+
         # Delimiter choice
         wx.StaticText(parse_pane, label="Delimiter: ")
-        self.delimCtrl = wx.Choice(parse_pane, choices=["Tab", "Comma", "Space"])
+        self.delimCtrl = wx.Choice(
+            parse_pane, choices=["Tab", "Comma", "Space"])
         self.delimCtrl.SetSelection(0)
 
         # Header choice
@@ -68,21 +73,23 @@ class LoadDialog(sized_controls.SizedDialog):
 
         # Frequency column
         wx.StaticText(parse_pane, label="Index of frequency column: ")
-        self.freqIndCtrl = IntCtrl(parse_pane, min=0, limited=True, allow_none=False)
+        self.freqIndCtrl = IntCtrl(
+            parse_pane, min=0, limited=True, allow_none=False)
 
         # Lines to skip
         wx.StaticText(parse_pane, label="Lines to skip: ")
-        self.skipCtrl = IntCtrl(parse_pane, min=0, limited=True, allow_none=False)
+        self.skipCtrl = IntCtrl(
+            parse_pane, min=0, limited=True, allow_none=False)
 
         # Second separating line
         line2 = wx.StaticLine(self.pane, style=wx.LI_HORIZONTAL)
         line2.SetSizerProps(border=(('all', 5)), expand=True)
 
         # Metadata settings control
-        meta_pane= sized_controls.SizedPanel(self.pane)
+        meta_pane = sized_controls.SizedPanel(self.pane)
         meta_pane.SetSizerType('form')
         meta_pane.SetSizerProps(halign="left")
-        
+
         wx.StaticText(meta_pane, label="Frequency unit: ")
         self.freqUnitCtrl = wx.TextCtrl(meta_pane)
 
@@ -103,7 +110,7 @@ class LoadDialog(sized_controls.SizedDialog):
 
         button_cancel = wx.Button(btns_pane, wx.ID_CANCEL, label='Cancel')
         button_cancel.Bind(wx.EVT_BUTTON, self.on_button)
-        
+
         self.Fit()
 
     def on_button(self, event):
@@ -111,6 +118,7 @@ class LoadDialog(sized_controls.SizedDialog):
             self.EndModal(event.EventObject.Id)
         else:
             self.Close()
+
 
 class SubPanel(wx.Panel):
     '''
@@ -167,17 +175,19 @@ class TabPanel(SubPanel):
         trace_pane = wx.Panel(nb)
         trace_sizer = wx.BoxSizer(wx.VERTICAL)
         main_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        
+
         # Mixin listctrl for selecting traces
-        self.trace_list = ResizeListCtrl(trace_pane, size=(-1, 100), style=wx.LC_REPORT)
+        self.trace_list = ResizeListCtrl(
+            trace_pane, size=(-1, 100), style=wx.LC_REPORT
+        )
         self.trace_list.InsertColumn(0, 'Name', width=-1)
         self.trace_list.InsertColumn(1, 'Freq Unit', width=-1)
         self.trace_list.InsertColumn(2, 'Spec Unit', width=-1)
         trace_sizer.Add(self.trace_list, wx.EXPAND)
-        
+
         # Button for removing traces
         self.rm_btn = wx.Button(trace_pane, label="Remove")
-        self.rm_btn.Disable() # start in disabled state
+        self.rm_btn.Disable()  # start in disabled state
         self.parent.Bind(wx.EVT_BUTTON, self.RemoveTrace, self.rm_btn)
         trace_sizer.Add(self.rm_btn)
         main_sizer.Add(trace_sizer, 1, wx.EXPAND)
@@ -185,8 +195,10 @@ class TabPanel(SubPanel):
         tabs.append(trace_pane)
 
         # Bind selection/deselection of list elements to updating the button
-        trace_pane.Bind(wx.EVT_LIST_ITEM_SELECTED, self.UpdateRmButton, self.trace_list)
-        trace_pane.Bind(wx.EVT_LIST_ITEM_DESELECTED, self.UpdateRmButton, self.trace_list)
+        trace_pane.Bind(wx.EVT_LIST_ITEM_SELECTED,
+                        self.UpdateRmButton, self.trace_list)
+        trace_pane.Bind(wx.EVT_LIST_ITEM_DESELECTED,
+                        self.UpdateRmButton, self.trace_list)
 
         # Names of each tab
         names = ["Data"]
@@ -200,7 +212,7 @@ class TabPanel(SubPanel):
         sizer.Add(nb, 1, wx.EXPAND)
 
         self.panel.SetSizer(sizer)
-    
+
     def AddTrace(self, trace_idx):
         # Get fields for the new trace
         spec = self.datasrc.traces[trace_idx]
@@ -234,10 +246,12 @@ class TabPanel(SubPanel):
                 # is out of sync with the listctrl's array
                 try:
                     assert(self.datasrc.DeleteTrace(i))
-                    continue # don't increment index if a deletion occurs
+                    continue  # don't increment index if a deletion occurs
                 except:
-                    raise RuntimeError("Failed to delete trace at index {}".format(i))
+                    raise RuntimeError(
+                        "Failed to delete trace at index {}".format(i))
             i += 1
+
 
 class TextPanel(SubPanel):
     def __init__(self, parent, datasrc, text=wx.EmptyString):
@@ -265,7 +279,7 @@ class PlotRegion(SubPanel):
 
     def InitUI(self):
         self.plot_data = TextPanel(self.panel,
-                                   self.datasrc, 
+                                   self.datasrc,
                                    text="Additional plot information goes here")
         self.plot_panel = PlotPanel(self.panel,
                                     messenger=self.CoordMessage)
@@ -276,7 +290,7 @@ class PlotRegion(SubPanel):
         vbox.Add(self.plot_data.GetPanel(), 1, wx.EXPAND)
 
         self.panel.SetSizer(vbox)
-    
+
     def CoordMessage(self, s, **kwargs):
         app = wx.GetApp()
         app.layout.status.SetStatusText(s)
@@ -347,17 +361,19 @@ class Layout(wx.Frame):
             # Proceed loading the file chosen by the user
             path = dialog.fileCtrl.GetPath()
             # Assemble remaining options into a dictionary
-            delimStr = dialog.delimCtrl.GetString(dialog.delimCtrl.GetSelection())
+            delimStr = dialog.delimCtrl.GetString(
+                dialog.delimCtrl.GetSelection())
             commChar = dialog.commCtrl.GetValue()
-            if len(commChar) == 0: commChar = None
+            if len(commChar) == 0:
+                commChar = None
             options = {
-                'delimChoice' : delimStr,
-                'header' : dialog.headCtrl.GetValue(),
-                'commentChar' : commChar,
-                'freqColInd' : dialog.freqIndCtrl.GetValue(),
-                'skipCount' : dialog.skipCtrl.GetValue(),
-                'freqUnit' : dialog.freqUnitCtrl.GetValue(),
-                'specUnit' : dialog.specUnitCtrl.GetValue()
+                'delimChoice': delimStr,
+                'header': dialog.headCtrl.GetValue(),
+                'commentChar': commChar,
+                'freqColInd': dialog.freqIndCtrl.GetValue(),
+                'skipCount': dialog.skipCtrl.GetValue(),
+                'freqUnit': dialog.freqUnitCtrl.GetValue(),
+                'specUnit': dialog.specUnitCtrl.GetValue()
             }
             traceInd = -1
             try:
@@ -366,11 +382,10 @@ class Layout(wx.Frame):
                 wx.LogError("Cannot open file {}.".format(path))
                 wx.LogError(str(e))
                 return
-            
+
             if traceInd >= 0:
                 # Add the new trace to the tab panel
                 self.tab_pane.AddTrace(traceInd)
-            
 
     async def SlowFunc(self, e):
         '''
