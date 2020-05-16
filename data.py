@@ -9,8 +9,10 @@ class Spectrum(object):
     Container for pandas dataframe representing the spectrum
     and other metadata.
     '''
-    def __init__(self, df, specunit="", frequnit="", 
+    def __init__(self, df, id, specunit="", frequnit="", 
                  name="", freqcol=0, speccol=None):
+        # Assign this spectrum an ID
+        self.id = id
 
         # Assume that the passed df only has two columns
         # TODO refactor to allow multi-column support.
@@ -35,6 +37,7 @@ class DataSource(object):
     def __init__(self, app=None):
         self.app = app # Connection to the UI
         self.traces = []
+        self.trace_counter = 0
 
         self.mode = 'ui' if self.app else 'repl'
         self.delim_map = {
@@ -73,11 +76,13 @@ class DataSource(object):
         name = basename(file)
         self.traces.append(Spectrum(
             df,
+            self.trace_counter,
             specunit=options['specUnit'],
             frequnit=options['freqUnit'],
             freqcol=options["freqColInd"],
             name=name
         ))
+        self.trace_counter += 1
         return len(self.traces) - 1 # last index
 
     def DeleteTrace(self, i):
