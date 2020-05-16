@@ -218,18 +218,6 @@ class TabPanel(SubPanel):
         else:
             self.rm_btn.Disable()
 
-    def ActivateRmButton(self, event):
-        '''
-        Responds to EVT_LIST_ITEM_SELECTED events.
-        '''
-        self.rm_btn.Enable()
-
-    def DeactivateRmButton(self, event):
-        '''
-        Responds to EVT_LIST_ITEM_DESELECTED events.
-        '''
-        self.rm_btn.Disable()
-
     def RemoveTrace(self, event):
         '''
         Event handler to remove traces.
