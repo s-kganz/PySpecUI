@@ -16,22 +16,26 @@ import asyncio
 
 class ResizeListCtrl(wx.ListCtrl, ListCtrlAutoWidthMixin):
     '''
-    Adding the auto width mixin makes the ListCtrl resize itself properly
+    Adding the auto width mixin makes the ListCtrl resize itself properly. Otherwise
+    this is exactly the same as a typical ListCtrl.
     '''
     def __init__(self, parent, ID=wx.ID_ANY, pos=wx.DefaultPosition,
-                 size=wx.DefaultSize, style=0):
+                 size=wx.DefaultSize, style=wx.LC_REPORT):
         wx.ListCtrl.__init__(self, parent, ID, pos, size, style)
         ListCtrlAutoWidthMixin.__init__(self)
         self.setResizeColumn(0)
 
 class LoadDialog(sized_controls.SizedDialog):
-
+    '''
+    Dialog box for loading a data file.
+    '''
     def __init__(self, *args, **kwargs):
         super(LoadDialog, self).__init__(*args, **kwargs)
         self.pane = self.GetContentsPane()
         self.InitUI()
     
     def InitUI(self):
+        
         file_pane = sized_controls.SizedPanel(self.pane)
         file_pane.SetSizerType('horizontal')
         file_pane.SetSizerProps(halign='left')
@@ -161,14 +165,28 @@ class TabPanel(SubPanel):
 
         # The first tab lists all data currently loaded
         trace_pane = wx.Panel(nb)
-        trace_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        trace_sizer = wx.BoxSizer(wx.VERTICAL)
+        main_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        
+        # Mixin listctrl for selecting traces
         self.trace_list = ResizeListCtrl(trace_pane, size=(-1, 100), style=wx.LC_REPORT)
         self.trace_list.InsertColumn(0, 'Name', width=-1)
         self.trace_list.InsertColumn(1, 'Freq Unit', width=-1)
         self.trace_list.InsertColumn(2, 'Spec Unit', width=-1)
         trace_sizer.Add(self.trace_list, wx.EXPAND)
-        trace_pane.SetSizer(trace_sizer)
+        
+        # Button for removing traces
+        self.rm_btn = wx.Button(trace_pane, label="Remove")
+        self.rm_btn.Disable() # start in disabled state
+        self.parent.Bind(wx.EVT_BUTTON, self.RemoveTrace, self.rm_btn)
+        trace_sizer.Add(self.rm_btn)
+        main_sizer.Add(trace_sizer, 1, wx.EXPAND)
+        trace_pane.SetSizer(main_sizer)
         tabs.append(trace_pane)
+
+        # Bind selection/deselection of list elements to updating the button
+        trace_pane.Bind(wx.EVT_LIST_ITEM_SELECTED, self.ActivateRmButton, self.trace_list)
+        trace_pane.Bind(wx.EVT_LIST_ITEM_DESELECTED, self.DeactivateRmButton, self.trace_list)
 
         # Names of each tab
         names = ["Data"]
@@ -193,6 +211,25 @@ class TabPanel(SubPanel):
             if i == 0: self.trace_list.InsertItem(self.data_tab_idx, fields[i])
             else: self.trace_list.SetItem(self.data_tab_idx, i, fields[i])
         self.data_tab_idx += 1
+        #self.UpdateRmButton(None)
+
+    def ActivateRmButton(self, event):
+        '''
+        Responds to EVT_LIST_ITEM_SELECTED events.
+        '''
+        self.rm_btn.Enable()
+
+    def DeactivateRmButton(self, event):
+        '''
+        Responds to EVT_LIST_ITEM_DESELECTED events.
+        '''
+        self.rm_btn.Disable()
+
+    def RemoveTrace(self, event):
+        '''
+        Event handler to remove traces.
+        '''
+        print("Remove trace")
 
 class TextPanel(SubPanel):
     def __init__(self, parent, datasrc, text=wx.EmptyString):
