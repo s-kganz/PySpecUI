@@ -338,7 +338,7 @@ class PlotRegion(SubPanel):
         # Add data to the plot if it is not already present
         for t in self.datasrc.traces:
             if (t.id in traces) and (t.id not in self.plotted_traces):
-                self.plot_panel.oplot(t.getx(), t.gety(), label=t.name)
+                self.plot_panel.oplot(t.getx(), t.gety(), label=t.name, show_legend=True)
                 self.plotted_traces.append(t.id)
     
     def RemoveTracesFromPlot(self, traces):
@@ -353,6 +353,7 @@ class PlotRegion(SubPanel):
         self.Replot()
 
     def UpdateTraces(self, traces):
+        # stub
         # Replot the passed traces if they are present
         print("Updating traces {}".format(traces))
     
