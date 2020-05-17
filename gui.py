@@ -338,7 +338,7 @@ class PlotRegion(SubPanel):
         # Add data to the plot if it is not already present
         for t in self.datasrc.traces:
             if (t.id in traces) and (t.id not in self.plotted_traces):
-                self.plot_panel.oplot(t.getx(), t.gety(), label=t.name, show_legend=True)
+                self.PlotTrace(t)
                 self.plotted_traces.append(t.id)
     
     def RemoveTracesFromPlot(self, traces):
@@ -363,12 +363,20 @@ class PlotRegion(SubPanel):
         '''
         self.plot_panel.clear()
         self.plot_panel.reset_config() # Remove old names of traces
-        self.plot_panel.unzoom_all() # This call forces the plot to update visually
-        for id in self.plotted_traces:
-            # Get the trace from the data manager
-            spec = self.datasrc.GetTraceByID(id)
-            assert(spec) # Make sure spectrum is not null
-            self.plot_panel.plot(spec.getx(), spec.gety(), label=spec.name)
+        if len(self.plotted_traces) > 0:
+            for id in self.plotted_traces:
+                # Get the trace from the data manager
+                spec = self.datasrc.GetTraceByID(id)
+                assert(spec) # Make sure spectrum is not null
+                self.PlotTrace(spec)
+        else:
+            self.plot_panel.unzoom_all() # This call forces the plot to update visually
+
+    def PlotTrace(self, t, **kwargs):
+        '''
+        Plot a trace object. Used internally to standardize plotting style.
+        '''
+        self.plot_panel.oplot(t.getx(), t.gety(), label=t.name, show_legend=True, **kwargs)
 
 class Layout(wx.Frame):
 
