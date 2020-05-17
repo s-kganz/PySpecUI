@@ -27,6 +27,12 @@ class Spectrum(object):
 
         self.name = name
 
+    def getx(self):
+        return self.data[self.freqname]
+    
+    def gety(self):
+        return self.data[self.specname]
+
 
 class DataSource(object):
     '''
@@ -94,5 +100,17 @@ class DataSource(object):
             return True
         else:
             return False
+    
+    def GetTraceByID(self, id):
+        '''
+        Return spectrum object corresponding to the given id. Returns
+        None if no specturm was found
+        '''
+        for spec in self.traces:
+            if spec.id == id:
+                return spec
+        
+        return None
+
 
 
