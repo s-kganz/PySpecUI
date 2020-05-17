@@ -220,6 +220,7 @@ class DataTab(SubPanel):
             # Disable all buttons
             for btn in self.btns:
                 btn.Disable()
+        event.Skip()
 
     def RemoveTrace(self, event):
         '''
@@ -232,6 +233,8 @@ class DataTab(SubPanel):
         while i < self.trace_list.GetItemCount():
             if self.trace_list.IsSelected(i):
                 self.trace_list.DeleteItem(i)
+                # Also remove the trace from the plot
+                wx.GetTopLevelParent(self.panel).RemoveTracesFromPlot([self.datasrc.traces[i].id])
                 # Delete the trace from the data manager as well
                 # The assertion will fail if the data manager trace array
                 # is out of sync with the listctrl's array
@@ -248,19 +251,17 @@ class DataTab(SubPanel):
         Add selected traces to the plot window, showing warnings about axis
         limits as necessary.
         '''
-        # Determine which traces are selected and pass these to the plot pane
-        selected = [i for i in range(0, self.trace_list.GetItemCount()) \
+        # Determine which traces IDs are selected and pass these to the plot panel
+        selected = [self.datasrc.traces[i].id \
+                    for i in range(0, self.trace_list.GetItemCount()) \
                     if self.trace_list.IsSelected(i)]
 
         wx.GetTopLevelParent(self.panel).AddTracesToPlot(selected)
-
-
 
 class TabPanel(SubPanel):
     '''
     Class implementing a notebook-style collection of panels.
     '''
-
     def __init__(self, parent, datasrc, ntabs=4):
         self.ntabs = ntabs
         self.data_tab_idx = 0
@@ -312,6 +313,7 @@ class TextPanel(SubPanel):
 
 class PlotRegion(SubPanel):
     def __init__(self, parent, datasrc):
+        self.plotted_traces = []
         super(PlotRegion, self).__init__(parent, datasrc)
 
     def InitUI(self):
@@ -331,7 +333,41 @@ class PlotRegion(SubPanel):
     def CoordMessage(self, s, **kwargs):
         app = wx.GetApp()
         app.layout.status.SetStatusText(s)
+    
+    def AddTracesToPlot(self, traces):
+        # Add data to the plot if it is not already present
+        for t in self.datasrc.traces:
+            if (t.id in traces) and (t.id not in self.plotted_traces):
+                self.plot_panel.oplot(t.getx(), t.gety(), label=t.name)
+                self.plotted_traces.append(t.id)
+    
+    def RemoveTracesFromPlot(self, traces):
+        # Remove traces to be discarded
+        i = 0
+        while i < len(self.plotted_traces):
+            if self.plotted_traces[i] in traces:
+                self.plotted_traces.pop(i)
+                continue
+            i += 1
+        # Clear and re-draw the plot
+        self.Replot()
 
+    def UpdateTraces(self, traces):
+        # Replot the passed traces if they are present
+        print("Updating traces {}".format(traces))
+    
+    def Replot(self):
+        '''
+        Replot all loaded traces.
+        '''
+        self.plot_panel.clear()
+        self.plot_panel.reset_config() # Remove old names of traces
+        self.plot_panel.unzoom_all() # This call forces the plot to update visually
+        for id in self.plotted_traces:
+            # Get the trace from the data manager
+            spec = self.datasrc.GetTraceByID(id)
+            assert(spec) # Make sure spectrum is not null
+            self.plot_panel.plot(spec.getx(), spec.gety(), label=spec.name)
 
 class Layout(wx.Frame):
 
@@ -429,15 +465,19 @@ class Layout(wx.Frame):
         Pull the given traces from the data manager and add them to the
         plot.
         '''
-        print("Adding traces {} to plot".format(str(traces)))
-        pass
+        self.plt_pane.AddTracesToPlot(traces)
 
     def RemoveTracesFromPlot(self, traces):
         '''
         Remove the given traces from the plot window.
         '''
-        print("Removing traces {} from plot".format(str(traces)))
-        pass
+        self.plt_pane.RemoveTracesFromPlot(traces)
+    
+    def UpdatePlotTraces(self, traces):
+        '''
+        Replot the given traces
+        '''
+        self.plt_pane.UpdatePlotTraces(traces)
 
     async def SlowFunc(self, e):
         '''
