@@ -2,4 +2,5 @@ wxpython
 examples
 __pycache__
 .vscode
-
+features.txt
+schedule.txt
