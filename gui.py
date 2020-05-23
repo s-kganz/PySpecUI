@@ -98,14 +98,23 @@ class DirTreeCtrl(wx.TreeCtrl):
     
     def OnDblClick(self, event):
         act_item = event.GetItem()
-        # If the item is a folder, expand/collapse it. Otherwise, try and read it.
+        # If the item is a folder (has children), expand/collapse it. Otherwise, try and read it.
         if self.GetChildrenCount(act_item) > 0:
             # Expand if collapsed, otherwise collapse
             if self.IsExpanded(act_item): self.Collapse(act_item)
             else: self.Expand(act_item)
         else:
-            abspath = os.path.join(self.dir, self.GetItemText(act_item))
-            # Pass an empty event object
+            # Walk up the tree until the root is reached to get all folders in the path
+            folders = []
+            walker = act_item
+            while walker.IsOk():
+                folders.append(self.GetItemText(walker))
+                walker = self.GetItemParent(walker)
+            
+            abspath = os.path.join(*folders[::-1])
+            
+            print(abspath)
+            # Normally this function takes an event object so we pass None here
             wx.GetTopLevelParent(self).LoadData(None, path=abspath)
 
 class LoadDialog(sized_controls.SizedDialog):
