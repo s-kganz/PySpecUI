@@ -33,6 +33,13 @@ class Spectrum(object):
     def gety(self):
         return self.data[self.specname]
 
+    def __str__(self):
+        return "{}: {}-{} {}".format(
+            self.name,
+            min(self.data[self.freqname]),
+            max(self.data[self.freqname]),
+            self.frequnit
+        )
 
 class DataSource(object):
     '''
