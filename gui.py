@@ -6,7 +6,6 @@ the application interface.
 import wx
 from wx.lib.intctrl import IntCtrl
 from wx.lib import sized_controls
-from wx.lib.mixins.listctrl import ListCtrlAutoWidthMixin
 from wxasync import AsyncBind, WxAsyncApp, StartCoroutine
 from wxmplot import PlotPanel
 
@@ -14,19 +13,66 @@ import time
 import os
 import asyncio
 
-
-class ResizeListCtrl(wx.ListCtrl, ListCtrlAutoWidthMixin):
+class SubPanel():
     '''
-    Adding the auto width mixin makes the ListCtrl resize itself properly. Otherwise
-    this is exactly the same as a typical ListCtrl.
+    Superclass for panels in the application that implement their own widgets. Derived
+    classes implement InitUI and other functions.
     '''
 
-    def __init__(self, parent, ID=wx.ID_ANY, pos=wx.DefaultPosition,
-                 size=wx.DefaultSize, style=wx.LC_REPORT):
-        wx.ListCtrl.__init__(self, parent, ID, pos, size, style)
-        ListCtrlAutoWidthMixin.__init__(self)
-        self.setResizeColumn(0)
+    def __init__(self, parent, datasrc):
+        '''
+        Initializer for the SubPanel class. Parent must be a pointer
+        to either a panel or a window.
+        '''
+        super(SubPanel, self).__init__()
+        self.parent = parent
+        self.panel = wx.Panel(self.parent)
+        self.datasrc = datasrc
+        self.InitUI()
 
+    def InitUI(self):
+        '''
+        Unimplemented functions as a placeholder for custom widgets
+        defined by derived classes.
+        '''
+        pass
+
+    def GetPanel(self):
+        '''
+        Return a pointer to the panel (i.e. the widget container) for this
+        SubPanel.
+        '''
+        return self.panel
+
+class DirTreeCtrl(wx.TreeCtrl):
+    '''
+    A window showing the current working directory. Implementation comes from:
+    https://python-forum.io/Thread-Use-custom-root-in-wx-GenericDirCtrl
+    '''
+    def __init__(self, parent, datasrc=None):
+        super(DirTreeCtrl, self).__init__(parent)
+        self.__collapsing = True
+        self.datasrc = datasrc
+ 
+        il = wx.ImageList(16,16)
+        self.folderidx = il.Add(wx.ArtProvider.GetBitmap(wx.ART_FOLDER, wx.ART_OTHER, (16,16)))
+        self.fileidx = il.Add(wx.ArtProvider.GetBitmap(wx.ART_NORMAL_FILE, wx.ART_OTHER, (16,16)))
+        self.AssignImageList(il)
+ 
+        root = os.getcwd()
+        self.setwd(root)
+
+    def setwd(self, newdir):
+        ids = {newdir : self.AddRoot(newdir, self.folderidx)}
+        self.SetItemHasChildren(ids[newdir])
+ 
+        for (dirpath, dirnames, filenames) in os.walk(newdir):
+            for dirname in sorted(dirnames):
+                fullpath = os.path.join(dirpath, dirname)
+                ids[fullpath] = self.AppendItem(ids[dirpath], dirname, self.folderidx)
+                 
+            for filename in sorted(filenames):
+                self.AppendItem(ids[dirpath], filename, self.fileidx)
 
 class LoadDialog(sized_controls.SizedDialog):
     '''
@@ -118,38 +164,6 @@ class LoadDialog(sized_controls.SizedDialog):
             self.EndModal(event.EventObject.Id)
         else:
             self.Close()
-
-
-class SubPanel(wx.Panel):
-    '''
-    Superclass for panels in the application that implement their own widgets. Derived
-    classes implement InitUI and other functions.
-    '''
-
-    def __init__(self, parent, datasrc):
-        '''
-        Initializer for the SubPanel class. Parent must be a pointer
-        to either a panel or a window.
-        '''
-        super(SubPanel, self).__init__()
-        self.parent = parent
-        self.panel = wx.Panel(self.parent)
-        self.datasrc = datasrc
-        self.InitUI()
-
-    def InitUI(self):
-        '''
-        Unimplemented functions as a placeholder for custom widgets
-        defined by derived classes.
-        '''
-        pass
-
-    def GetPanel(self):
-        '''
-        Return a pointer to the panel (i.e. the widget container) for this
-        SubPanel.
-        '''
-        return self.panel
 
 class DataTab(SubPanel):
     '''
@@ -275,11 +289,11 @@ class TabPanel(SubPanel):
         nb = wx.Notebook(self.panel)
         # Create tab objects
         tabs = []
-        self.data_tab = DataTab(nb, self.datasrc)
-        tabs.append(self.data_tab.GetPanel())
+        self.data_tab = DirTreeCtrl(nb, self.datasrc)
+        tabs.append(self.data_tab)
   
         # Names of each tab
-        names = ["Data"]
+        names = ["Catalog"]
         # Create notebook object
         assert(len(names) == len(tabs))
         for i in range(len(tabs)):
