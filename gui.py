@@ -77,7 +77,11 @@ class DirTreeCtrl(wx.TreeCtrl):
         root = os.getcwd()
         self.setwd(root)
 
+        # Bind double clicking an item to trying to read that file
+        self.Bind(wx.EVT_TREE_ITEM_ACTIVATED, self.OnDblClick)
+
     def setwd(self, newdir):
+        self.dir = newdir
         self.DeleteAllItems()
         ids = {newdir : self.AddRoot(newdir, self.folderidx)}
         self.SetItemHasChildren(ids[newdir])
@@ -91,18 +95,30 @@ class DirTreeCtrl(wx.TreeCtrl):
                 self.AppendItem(ids[dirpath], filename, self.fileidx)
         
         self.Expand(self.GetRootItem())
+    
+    def OnDblClick(self, event):
+        act_item = event.GetItem()
+        # If the item is a folder, expand/collapse it. Otherwise, try and read it.
+        if self.GetChildrenCount(act_item) > 0:
+            # Expand if collapsed, otherwise collapse
+            if self.IsExpanded(act_item): self.Collapse(act_item)
+            else: self.Expand(act_item)
+        else:
+            abspath = os.path.join(self.dir, self.GetItemText(act_item))
+            # Pass an empty event object
+            wx.GetTopLevelParent(self).LoadData(None, path=abspath)
 
 class LoadDialog(sized_controls.SizedDialog):
     '''
     Dialog box for loading a data file.
     '''
 
-    def __init__(self, *args, **kwargs):
-        super(LoadDialog, self).__init__(*args, **kwargs)
+    def __init__(self, parent, path=os.getcwd(), title="Load a file"):
+        super(LoadDialog, self).__init__(parent, title=title)
         self.pane = self.GetContentsPane()
-        self.InitUI()
+        self.InitUI(path=path)
 
-    def InitUI(self):
+    def InitUI(self, path=os.getcwd()):
 
         file_pane = sized_controls.SizedPanel(self.pane)
         file_pane.SetSizerType('horizontal')
@@ -110,7 +126,7 @@ class LoadDialog(sized_controls.SizedDialog):
 
         # Add file selection control
         wx.StaticText(file_pane, label="File: ")
-        self.fileCtrl = wx.FilePickerCtrl(file_pane, path=os.getcwd())
+        self.fileCtrl = wx.FilePickerCtrl(file_pane, path=path)
 
         line1 = wx.StaticLine(self.pane, style=wx.LI_HORIZONTAL)
         line1.SetSizerProps(border=(('all', 5)), expand=True)
@@ -422,12 +438,12 @@ class Layout(wx.Frame):
         '''
         self.Close()
 
-    def LoadData(self, e):
+    def LoadData(self, e, **kwargs):
         '''
         Load a new data trace.
         '''
         # Create dialog box
-        with LoadDialog(self, title="Load a delimited file...") as dialog:
+        with LoadDialog(self, **kwargs) as dialog:
 
             if dialog.ShowModal() == wx.ID_CANCEL:
                 return     # the user changed their mind
