@@ -5,6 +5,7 @@ the application interface.
 
 import wx
 from wx.lib.intctrl import IntCtrl
+from wx.lib.mixins.treemixin import DragAndDrop
 from wx.lib import sized_controls
 from wxasync import AsyncBind, WxAsyncApp, StartCoroutine
 from wxmplot import PlotPanel
@@ -12,6 +13,20 @@ from wxmplot import PlotPanel
 import time
 import os
 import asyncio
+
+class DragAndDropTree(wx.TreeCtrl, DragAndDrop):
+    '''
+    Mixin class to enable drag and drop with the stock TreeCtrl.
+    '''
+    def __init__(self, parent, datasrc, style=wx.TR_DEFAULT_STYLE):
+        self.datasrc = datasrc
+        super(DragAndDropTree, self).__init__(parent, style=style)
+
+    def OnDrop(self):
+        '''
+        Dropping one item on top of another is not meaningful, so just return.
+        '''
+        return
 
 class SubPanel():
     '''
@@ -95,7 +110,7 @@ class LoadDialog(sized_controls.SizedDialog):
 
         # Add file selection control
         wx.StaticText(file_pane, label="File: ")
-        self.fileCtrl = wx.FilePickerCtrl(file_pane)
+        self.fileCtrl = wx.FilePickerCtrl(file_pane, path=os.getcwd())
 
         line1 = wx.StaticLine(self.pane, style=wx.LI_HORIZONTAL)
         line1.SetSizerProps(border=(('all', 5)), expand=True)
@@ -179,15 +194,14 @@ class CatalogTab(SubPanel):
 
     def InitUI(self):
         vsizer = wx.BoxSizer(wx.VERTICAL)
-        
+
+        # Control for the current working directory
+        self.dirctrl = wx.DirPickerCtrl(self.panel, path=self.cwd)
+        vsizer.Add(self.dirctrl, 0)
+
         # View for files in the current working directory
         self.tree = DirTreeCtrl(self.panel, datasrc=self.datasrc)
         vsizer.Add(self.tree, 1, wx.EXPAND)
-
-        # Control for the current working directory
-        hsizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.dirctrl = wx.DirPickerCtrl(self.panel, path=self.cwd)
-        vsizer.Add(self.dirctrl, 0)
 
         self.panel.SetSizer(vsizer)
 
@@ -208,102 +222,29 @@ class DataTab(SubPanel):
         super(DataTab, self).__init__(parent, datasrc)
     
     def InitUI(self):
-        # The first tab lists all data currently loaded
-        trace_pane = self.panel
-        trace_sizer = wx.BoxSizer(wx.VERTICAL)
+        self.sizer = wx.BoxSizer(wx.VERTICAL)
 
-        # Mixin listctrl for selecting traces
-        self.trace_list = wx.ListCtrl(
-            trace_pane, size=(-1, 100), style=wx.LC_REPORT
-        )
-        self.trace_list.InsertColumn(0, 'Name', width=-1)
-        self.trace_list.InsertColumn(1, 'Freq Unit', width=-1)
-        self.trace_list.InsertColumn(2, 'Spec Unit', width=-1)
-        trace_sizer.Add(self.trace_list, wx.EXPAND)
+        # Create the root nodes in the tree
+        self.tree = DragAndDropTree(self.panel, self.datasrc, style=wx.TR_HIDE_ROOT | wx.TR_ROW_LINES)
+        root = self.tree.AddRoot("Project")
+        # Section headers
+        self.tree_spec = self.tree.AppendItem(root, "Spectra")
+        self.tree_mode = self.tree.AppendItem(root, "Models")
+        self.tree_scpt = self.tree.AppendItem(root, "Scripts")
+        self.tree_tchn = self.tree.AppendItem(root, "Tool Chains")
 
-        # Additional controls at the bottom of the data tab
-        btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.sizer.Add(self.tree, 1, wx.EXPAND)
 
-        # Button for removing traces
-        self.rm_btn = wx.Button(trace_pane, label="Remove")
-        self.rm_btn.Disable()  # start in disabled state
-        trace_pane.Bind(wx.EVT_BUTTON, self.RemoveTrace, self.rm_btn)
-        self.btns.append(self.rm_btn)
-
-        # Button for adding traces to the plot
-        self.plot_btn = wx.Button(trace_pane, label="Add to plot")
-        self.plot_btn.Disable()
-        trace_pane.Bind(wx.EVT_BUTTON, self.OnPlot, self.plot_btn)
-        self.btns.append(self.plot_btn)
-
-        btn_sizer.Add(self.rm_btn, wx.CENTER)
-        btn_sizer.Add(self.plot_btn, wx.CENTER)
-        trace_sizer.Add(btn_sizer, 0, wx.EXPAND)
-        trace_pane.SetSizer(trace_sizer)
-
-        # Bind selection/deselection of list elements to updating buttons
-        trace_pane.Bind(wx.EVT_LIST_ITEM_SELECTED,
-                        self.UpdateButtons, self.trace_list)
-        trace_pane.Bind(wx.EVT_LIST_ITEM_DESELECTED,
-                        self.UpdateButtons, self.trace_list)
+        self.panel.SetSizer(self.sizer)
 
     def AddTrace(self, trace_idx):
-        # Get fields for the new trace
-        spec = self.datasrc.traces[trace_idx]
-        fields = (spec.name, spec.frequnit, spec.specunit)
-        # Add a new row to the list control
-        self.trace_list.Append(fields)
-
-    def UpdateButtons(self, event):
-        '''
-        Enable or Disable the removal button at the bottom of the data tab depending
-        on if any of traces are selected.
-        '''
-        if any(self.trace_list.IsSelected(i) for i in range(0, self.trace_list.GetItemCount())):
-            # Activate all buttons
-            for btn in self.btns:
-                btn.Enable()
-        else:
-            # Disable all buttons
-            for btn in self.btns:
-                btn.Disable()
-        event.Skip()
+        pass
 
     def RemoveTrace(self, event):
-        '''
-        Event handler to remove traces.
-        NOTE: The array of traces in the data manager should be in the exact
-              same order the array of traces shown in the list control.
-        '''
-        # Iterate over all items in the list. If one is selected, remove it.
-        i = 0
-        while i < self.trace_list.GetItemCount():
-            if self.trace_list.IsSelected(i):
-                self.trace_list.DeleteItem(i)
-                # Also remove the trace from the plot
-                wx.GetTopLevelParent(self.panel).RemoveTracesFromPlot([self.datasrc.traces[i].id])
-                # Delete the trace from the data manager as well
-                # The assertion will fail if the data manager trace array
-                # is out of sync with the listctrl's array
-                try:
-                    assert(self.datasrc.DeleteTrace(i))
-                    continue  # don't increment index if a deletion occurs
-                except:
-                    raise RuntimeError(
-                        "Failed to delete trace at index {}".format(i))
-            i += 1
+        pass
     
     def OnPlot(self, event):
-        '''
-        Add selected traces to the plot window, showing warnings about axis
-        limits as necessary.
-        '''
-        # Determine which traces IDs are selected and pass these to the plot panel
-        selected = [self.datasrc.traces[i].id \
-                    for i in range(0, self.trace_list.GetItemCount()) \
-                    if self.trace_list.IsSelected(i)]
-
-        wx.GetTopLevelParent(self.panel).AddTracesToPlot(selected)
+        pass
 
 class TabPanel(SubPanel):
     '''
