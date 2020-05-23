@@ -63,6 +63,7 @@ class DirTreeCtrl(wx.TreeCtrl):
         self.setwd(root)
 
     def setwd(self, newdir):
+        self.DeleteAllItems()
         ids = {newdir : self.AddRoot(newdir, self.folderidx)}
         self.SetItemHasChildren(ids[newdir])
  
@@ -164,6 +165,36 @@ class LoadDialog(sized_controls.SizedDialog):
             self.EndModal(event.EventObject.Id)
         else:
             self.Close()
+
+class CatalogTab(SubPanel):
+    '''
+    Implements a window for viewing files in the current working directory
+    and a file selection control for changing the working directory.
+    '''
+    def __init__(self, parent, datasrc):
+        self.cwd = os.getcwd()
+        super(CatalogTab, self).__init__(parent, datasrc)
+
+    def InitUI(self):
+        vsizer = wx.BoxSizer(wx.VERTICAL)
+        
+        # View for files in the current working directory
+        self.tree = DirTreeCtrl(self.panel, datasrc=self.datasrc)
+        vsizer.Add(self.tree, 1, wx.EXPAND)
+
+        # Control for the current working directory
+        hsizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.dirctrl = wx.DirPickerCtrl(self.panel, path=self.cwd)
+        vsizer.Add(self.dirctrl, 0)
+
+        self.panel.SetSizer(vsizer)
+
+        # Bind a change in the selection to updating the field
+        self.panel.Bind(wx.EVT_DIRPICKER_CHANGED, self.OnDirChanged)
+
+    def OnDirChanged(self, event):
+        newpath = self.dirctrl.GetPath()
+        self.tree.setwd(newpath)
 
 class DataTab(SubPanel):
     '''
@@ -289,8 +320,8 @@ class TabPanel(SubPanel):
         nb = wx.Notebook(self.panel)
         # Create tab objects
         tabs = []
-        self.data_tab = DirTreeCtrl(nb, self.datasrc)
-        tabs.append(self.data_tab)
+        self.catalog = CatalogTab(nb, self.datasrc)
+        tabs.append(self.catalog.GetPanel())
   
         # Names of each tab
         names = ["Catalog"]
