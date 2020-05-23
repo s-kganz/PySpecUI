@@ -35,7 +35,7 @@ class SubPanel():
         Unimplemented functions as a placeholder for custom widgets
         defined by derived classes.
         '''
-        pass
+        raise NotImplementedError("InitUI must be defined for all derived subpanels")
 
     def GetPanel(self):
         '''
