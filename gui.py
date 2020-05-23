@@ -74,6 +74,8 @@ class DirTreeCtrl(wx.TreeCtrl):
                  
             for filename in sorted(filenames):
                 self.AppendItem(ids[dirpath], filename, self.fileidx)
+        
+        self.Expand(self.GetRootItem())
 
 class LoadDialog(sized_controls.SizedDialog):
     '''
@@ -211,7 +213,7 @@ class DataTab(SubPanel):
         trace_sizer = wx.BoxSizer(wx.VERTICAL)
 
         # Mixin listctrl for selecting traces
-        self.trace_list = ResizeListCtrl(
+        self.trace_list = wx.ListCtrl(
             trace_pane, size=(-1, 100), style=wx.LC_REPORT
         )
         self.trace_list.InsertColumn(0, 'Name', width=-1)
@@ -320,12 +322,15 @@ class TabPanel(SubPanel):
         nb = wx.Notebook(self.panel)
         # Create tab objects
         tabs = []
+        self.data_tab = DataTab(nb, self.datasrc)
+        tabs.append(self.data_tab.GetPanel())
+
         self.catalog = CatalogTab(nb, self.datasrc)
         tabs.append(self.catalog.GetPanel())
   
         # Names of each tab
-        names = ["Catalog"]
-        # Create notebook object
+        names = ["Data", "Directory"]
+        # Add all tabs to the notebook object
         assert(len(names) == len(tabs))
         for i in range(len(tabs)):
             nb.AddPage(tabs[i], names[i])
