@@ -274,6 +274,7 @@ class DataTab(SubPanel):
 
         # Bind events
         self.tree.Bind(wx.EVT_TREE_ITEM_ACTIVATED, self.OnDblClick)
+        self.tree.Bind(wx.EVT_KEY_DOWN, self.OnKeyPress)
 
     def AddTrace(self, trace_idx):
         field = str(self.datasrc.traces[trace_idx])
@@ -301,6 +302,27 @@ class DataTab(SubPanel):
                 self.tree.Collapse(event.GetItem())
             else:
                 self.tree.Expand(event.GetItem())
+    
+    def OnKeyPress(self, event):
+        keycode = event.GetKeyCode()
+        if keycode == wx.WXK_DELETE:
+            # Determine if the current selection is a spectrum
+            sel_item = self.tree.GetSelection()
+            sel_data = self.tree.GetItemData(sel_item)
+            if type(sel_data) == Spectrum:
+                # Launch a dialog to ask if the user actually wants to delete it
+                with wx.MessageDialog(
+                    self.panel,
+                    "Do you want to remove trace {}?".format(sel_data.name),
+                    style = wx.CENTRE | wx.YES_NO | wx.CANCEL
+                ) as dialog:
+                    if dialog.ShowModal() == wx.ID_YES:
+                        # Actually delete the trace from the plot, tree, and data manager
+                        self.tree.Delete(sel_item)
+                        wx.GetTopLevelParent(self.panel).RemoveTracesFromPlot([sel_data.id])
+                        self.datasrc.DeleteTrace(sel_data.id)
+        
+        event.Skip() # Pass it up the chain
 
 class TabPanel(SubPanel):
     '''
