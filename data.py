@@ -26,6 +26,7 @@ class Spectrum(object):
         self.frequnit = frequnit
 
         self.name = name
+        self.is_plotted = False
 
     def getx(self):
         return self.data[self.freqname]
