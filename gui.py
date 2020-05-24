@@ -2,43 +2,135 @@
 This file includes implementation of derived classes for building
 the application interface.
 '''
-
+# WX MODULES
 import wx
 from wx.lib.intctrl import IntCtrl
+from wx.lib.mixins.treemixin import DragAndDrop
 from wx.lib import sized_controls
-from wx.lib.mixins.listctrl import ListCtrlAutoWidthMixin
 from wxasync import AsyncBind, WxAsyncApp, StartCoroutine
 from wxmplot import PlotPanel
 
+# OTHER PYTHON MODULES
 import time
 import os
 import asyncio
 
+# OTHER MODULES
+from data import Spectrum
 
-class ResizeListCtrl(wx.ListCtrl, ListCtrlAutoWidthMixin):
+class DragAndDropTree(wx.TreeCtrl, DragAndDrop):
     '''
-    Adding the auto width mixin makes the ListCtrl resize itself properly. Otherwise
-    this is exactly the same as a typical ListCtrl.
+    Mixin class to enable drag and drop with the stock TreeCtrl.
+    '''
+    def __init__(self, parent, datasrc, style=wx.TR_DEFAULT_STYLE):
+        self.datasrc = datasrc
+        super(DragAndDropTree, self).__init__(parent, style=style)
+
+    def OnDrop(self):
+        '''
+        Dropping one item on top of another is not meaningful, so just return.
+        '''
+        return
+
+class SubPanel():
+    '''
+    Superclass for panels in the application that implement their own widgets. Derived
+    classes implement InitUI and other functions.
     '''
 
-    def __init__(self, parent, ID=wx.ID_ANY, pos=wx.DefaultPosition,
-                 size=wx.DefaultSize, style=wx.LC_REPORT):
-        wx.ListCtrl.__init__(self, parent, ID, pos, size, style)
-        ListCtrlAutoWidthMixin.__init__(self)
-        self.setResizeColumn(0)
+    def __init__(self, parent, datasrc):
+        '''
+        Initializer for the SubPanel class. Parent must be a pointer
+        to either a panel or a window.
+        '''
+        super(SubPanel, self).__init__()
+        self.parent = parent
+        self.panel = wx.Panel(self.parent)
+        self.datasrc = datasrc
+        self.InitUI()
 
+    def InitUI(self):
+        '''
+        Unimplemented functions as a placeholder for custom widgets
+        defined by derived classes.
+        '''
+        raise NotImplementedError("InitUI must be defined for all derived subpanels")
+
+    def GetPanel(self):
+        '''
+        Return a pointer to the panel (i.e. the widget container) for this
+        SubPanel.
+        '''
+        return self.panel
+
+class DirTreeCtrl(wx.TreeCtrl):
+    '''
+    A window showing the current working directory. Implementation comes from:
+    https://python-forum.io/Thread-Use-custom-root-in-wx-GenericDirCtrl
+    '''
+    def __init__(self, parent, datasrc=None):
+        super(DirTreeCtrl, self).__init__(parent)
+        self.__collapsing = True
+        self.datasrc = datasrc
+ 
+        il = wx.ImageList(16,16)
+        self.folderidx = il.Add(wx.ArtProvider.GetBitmap(wx.ART_FOLDER, wx.ART_OTHER, (16,16)))
+        self.fileidx = il.Add(wx.ArtProvider.GetBitmap(wx.ART_NORMAL_FILE, wx.ART_OTHER, (16,16)))
+        self.AssignImageList(il)
+ 
+        root = os.getcwd()
+        self.setwd(root)
+
+        # Bind double clicking an item to trying to read that file
+        self.Bind(wx.EVT_TREE_ITEM_ACTIVATED, self.OnDblClick)
+
+    def setwd(self, newdir):
+        self.dir = newdir
+        self.DeleteAllItems()
+        ids = {newdir : self.AddRoot(newdir, self.folderidx)}
+        self.SetItemHasChildren(ids[newdir])
+ 
+        for (dirpath, dirnames, filenames) in os.walk(newdir):
+            for dirname in sorted(dirnames):
+                fullpath = os.path.join(dirpath, dirname)
+                ids[fullpath] = self.AppendItem(ids[dirpath], dirname, self.folderidx)
+                 
+            for filename in sorted(filenames):
+                self.AppendItem(ids[dirpath], filename, self.fileidx)
+        
+        self.Expand(self.GetRootItem())
+    
+    def OnDblClick(self, event):
+        act_item = event.GetItem()
+        # If the item is a folder (has children), expand/collapse it. Otherwise, try and read it.
+        if self.GetChildrenCount(act_item) > 0:
+            # Expand if collapsed, otherwise collapse
+            if self.IsExpanded(act_item): self.Collapse(act_item)
+            else: self.Expand(act_item)
+        else:
+            # Walk up the tree until the root is reached to get all folders in the path
+            folders = []
+            walker = act_item
+            while walker.IsOk():
+                folders.append(self.GetItemText(walker))
+                walker = self.GetItemParent(walker)
+            
+            abspath = os.path.join(*folders[::-1])
+            
+            # Normally this function takes an event object so we pass None here
+            wx.GetTopLevelParent(self).LoadData(None, path=abspath)
 
 class LoadDialog(sized_controls.SizedDialog):
     '''
     Dialog box for loading a data file.
     '''
 
-    def __init__(self, *args, **kwargs):
-        super(LoadDialog, self).__init__(*args, **kwargs)
+    def __init__(self, parent, path=os.getcwd(), title="Load a file"):
+        super(LoadDialog, self).__init__(parent, title=title)
         self.pane = self.GetContentsPane()
-        self.InitUI()
+        self.InitUI(path=path)
 
-    def InitUI(self):
+    def InitUI(self, path=os.getcwd()):
 
         file_pane = sized_controls.SizedPanel(self.pane)
         file_pane.SetSizerType('horizontal')
@@ -46,7 +138,7 @@ class LoadDialog(sized_controls.SizedDialog):
 
         # Add file selection control
         wx.StaticText(file_pane, label="File: ")
-        self.fileCtrl = wx.FilePickerCtrl(file_pane)
+        self.fileCtrl = wx.FilePickerCtrl(file_pane, path=path)
 
         line1 = wx.StaticLine(self.pane, style=wx.LI_HORIZONTAL)
         line1.SetSizerProps(border=(('all', 5)), expand=True)
@@ -119,37 +211,34 @@ class LoadDialog(sized_controls.SizedDialog):
         else:
             self.Close()
 
-
-class SubPanel(wx.Panel):
+class CatalogTab(SubPanel):
     '''
-    Superclass for panels in the application that implement their own widgets. Derived
-    classes implement InitUI and other functions.
+    Implements a window for viewing files in the current working directory
+    and a file selection control for changing the working directory.
     '''
-
     def __init__(self, parent, datasrc):
-        '''
-        Initializer for the SubPanel class. Parent must be a pointer
-        to either a panel or a window.
-        '''
-        super(SubPanel, self).__init__()
-        self.parent = parent
-        self.panel = wx.Panel(self.parent)
-        self.datasrc = datasrc
-        self.InitUI()
+        self.cwd = os.getcwd()
+        super(CatalogTab, self).__init__(parent, datasrc)
 
     def InitUI(self):
-        '''
-        Unimplemented functions as a placeholder for custom widgets
-        defined by derived classes.
-        '''
-        pass
+        vsizer = wx.BoxSizer(wx.VERTICAL)
 
-    def GetPanel(self):
-        '''
-        Return a pointer to the panel (i.e. the widget container) for this
-        SubPanel.
-        '''
-        return self.panel
+        # Control for the current working directory
+        self.dirctrl = wx.DirPickerCtrl(self.panel, path=self.cwd)
+        vsizer.Add(self.dirctrl, 0)
+
+        # View for files in the current working directory
+        self.tree = DirTreeCtrl(self.panel, datasrc=self.datasrc)
+        vsizer.Add(self.tree, 1, wx.EXPAND)
+
+        self.panel.SetSizer(vsizer)
+
+        # Bind a change in the selection to updating the field
+        self.panel.Bind(wx.EVT_DIRPICKER_CHANGED, self.OnDirChanged)
+
+    def OnDirChanged(self, event):
+        newpath = self.dirctrl.GetPath()
+        self.tree.setwd(newpath)
 
 class DataTab(SubPanel):
     '''
@@ -161,102 +250,79 @@ class DataTab(SubPanel):
         super(DataTab, self).__init__(parent, datasrc)
     
     def InitUI(self):
-        # The first tab lists all data currently loaded
-        trace_pane = self.panel
-        trace_sizer = wx.BoxSizer(wx.VERTICAL)
+        self.sizer = wx.BoxSizer(wx.VERTICAL)
 
-        # Mixin listctrl for selecting traces
-        self.trace_list = ResizeListCtrl(
-            trace_pane, size=(-1, 100), style=wx.LC_REPORT
+        # Create the root nodes in the tree
+        self.tree = DragAndDropTree(
+            self.panel, 
+            self.datasrc, 
+            style=wx.TR_DEFAULT_STYLE
         )
-        self.trace_list.InsertColumn(0, 'Name', width=-1)
-        self.trace_list.InsertColumn(1, 'Freq Unit', width=-1)
-        self.trace_list.InsertColumn(2, 'Spec Unit', width=-1)
-        trace_sizer.Add(self.trace_list, wx.EXPAND)
+        root = self.tree.AddRoot("Project")
 
-        # Additional controls at the bottom of the data tab
-        btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        # Section headers
+        self.tree_spec = self.tree.AppendItem(root, "Spectra")
+        self.tree_mode = self.tree.AppendItem(root, "Models")
+        self.tree_scpt = self.tree.AppendItem(root, "Scripts")
+        self.tree_tchn = self.tree.AppendItem(root, "Tool Chains")
 
-        # Button for removing traces
-        self.rm_btn = wx.Button(trace_pane, label="Remove")
-        self.rm_btn.Disable()  # start in disabled state
-        trace_pane.Bind(wx.EVT_BUTTON, self.RemoveTrace, self.rm_btn)
-        self.btns.append(self.rm_btn)
+        # Show the tree by default
+        self.tree.Expand(root)
 
-        # Button for adding traces to the plot
-        self.plot_btn = wx.Button(trace_pane, label="Add to plot")
-        self.plot_btn.Disable()
-        trace_pane.Bind(wx.EVT_BUTTON, self.OnPlot, self.plot_btn)
-        self.btns.append(self.plot_btn)
+        self.sizer.Add(self.tree, 1, wx.EXPAND)
+        self.panel.SetSizer(self.sizer)
 
-        btn_sizer.Add(self.rm_btn, wx.CENTER)
-        btn_sizer.Add(self.plot_btn, wx.CENTER)
-        trace_sizer.Add(btn_sizer, 0, wx.EXPAND)
-        trace_pane.SetSizer(trace_sizer)
-
-        # Bind selection/deselection of list elements to updating buttons
-        trace_pane.Bind(wx.EVT_LIST_ITEM_SELECTED,
-                        self.UpdateButtons, self.trace_list)
-        trace_pane.Bind(wx.EVT_LIST_ITEM_DESELECTED,
-                        self.UpdateButtons, self.trace_list)
+        # Bind events
+        self.tree.Bind(wx.EVT_TREE_ITEM_ACTIVATED, self.OnDblClick)
+        self.tree.Bind(wx.EVT_KEY_DOWN, self.OnKeyPress)
 
     def AddTrace(self, trace_idx):
-        # Get fields for the new trace
-        spec = self.datasrc.traces[trace_idx]
-        fields = (spec.name, spec.frequnit, spec.specunit)
-        # Add a new row to the list control
-        self.trace_list.Append(fields)
-
-    def UpdateButtons(self, event):
-        '''
-        Enable or Disable the removal button at the bottom of the data tab depending
-        on if any of traces are selected.
-        '''
-        if any(self.trace_list.IsSelected(i) for i in range(0, self.trace_list.GetItemCount())):
-            # Activate all buttons
-            for btn in self.btns:
-                btn.Enable()
-        else:
-            # Disable all buttons
-            for btn in self.btns:
-                btn.Disable()
-        event.Skip()
+        field = str(self.datasrc.traces[trace_idx])
+        self.tree.AppendItem(self.tree_spec, field, data=self.datasrc.traces[trace_idx])
 
     def RemoveTrace(self, event):
-        '''
-        Event handler to remove traces.
-        NOTE: The array of traces in the data manager should be in the exact
-              same order the array of traces shown in the list control.
-        '''
-        # Iterate over all items in the list. If one is selected, remove it.
-        i = 0
-        while i < self.trace_list.GetItemCount():
-            if self.trace_list.IsSelected(i):
-                self.trace_list.DeleteItem(i)
-                # Also remove the trace from the plot
-                wx.GetTopLevelParent(self.panel).RemoveTracesFromPlot([self.datasrc.traces[i].id])
-                # Delete the trace from the data manager as well
-                # The assertion will fail if the data manager trace array
-                # is out of sync with the listctrl's array
-                try:
-                    assert(self.datasrc.DeleteTrace(i))
-                    continue  # don't increment index if a deletion occurs
-                except:
-                    raise RuntimeError(
-                        "Failed to delete trace at index {}".format(i))
-            i += 1
-    
-    def OnPlot(self, event):
-        '''
-        Add selected traces to the plot window, showing warnings about axis
-        limits as necessary.
-        '''
-        # Determine which traces IDs are selected and pass these to the plot panel
-        selected = [self.datasrc.traces[i].id \
-                    for i in range(0, self.trace_list.GetItemCount()) \
-                    if self.trace_list.IsSelected(i)]
+        pass
 
-        wx.GetTopLevelParent(self.panel).AddTracesToPlot(selected)
+    def OnDblClick(self, event):
+        itemData = self.tree.GetItemData(event.GetItem())
+        if type(itemData) == Spectrum:
+            if itemData.is_plotted:
+                # Remove the item from the plot
+                wx.GetTopLevelParent(self.panel).RemoveTracesFromPlot([itemData.id])
+                itemData.is_plotted = False
+                self.tree.SetItemBold(event.GetItem(), bold=False)
+            else:
+                # Plot it and make it boldface
+                wx.GetTopLevelParent(self.panel).AddTracesToPlot([itemData.id])
+                itemData.is_plotted = True
+                self.tree.SetItemBold(event.GetItem())
+        else:
+            # Expand/collapse this item
+            if self.tree.IsExpanded(event.GetItem()):
+                self.tree.Collapse(event.GetItem())
+            else:
+                self.tree.Expand(event.GetItem())
+    
+    def OnKeyPress(self, event):
+        keycode = event.GetKeyCode()
+        if keycode == wx.WXK_DELETE:
+            # Determine if the current selection is a spectrum
+            sel_item = self.tree.GetSelection()
+            sel_data = self.tree.GetItemData(sel_item)
+            if type(sel_data) == Spectrum:
+                # Launch a dialog to ask if the user actually wants to delete it
+                with wx.MessageDialog(
+                    self.panel,
+                    "Do you want to remove trace {}?".format(sel_data.name),
+                    style = wx.CENTRE | wx.YES_NO | wx.CANCEL
+                ) as dialog:
+                    if dialog.ShowModal() == wx.ID_YES:
+                        # Actually delete the trace from the plot, tree, and data manager
+                        self.tree.Delete(sel_item)
+                        wx.GetTopLevelParent(self.panel).RemoveTracesFromPlot([sel_data.id])
+                        self.datasrc.DeleteTrace(sel_data.id)
+        
+        event.Skip() # Pass it up the chain
 
 class TabPanel(SubPanel):
     '''
@@ -277,10 +343,13 @@ class TabPanel(SubPanel):
         tabs = []
         self.data_tab = DataTab(nb, self.datasrc)
         tabs.append(self.data_tab.GetPanel())
+
+        self.catalog = CatalogTab(nb, self.datasrc)
+        tabs.append(self.catalog.GetPanel())
   
         # Names of each tab
-        names = ["Data"]
-        # Create notebook object
+        names = ["Data", "Directory"]
+        # Add all tabs to the notebook object
         assert(len(names) == len(tabs))
         for i in range(len(tabs)):
             nb.AddPage(tabs[i], names[i])
@@ -314,6 +383,7 @@ class TextPanel(SubPanel):
 class PlotRegion(SubPanel):
     def __init__(self, parent, datasrc):
         self.plotted_traces = []
+        self.is_blank = True
         super(PlotRegion, self).__init__(parent, datasrc)
 
     def InitUI(self):
@@ -361,7 +431,7 @@ class PlotRegion(SubPanel):
         '''
         Replot all loaded traces.
         '''
-        self.plot_panel.clear()
+        self.is_blank = True
         self.plot_panel.reset_config() # Remove old names of traces
         if len(self.plotted_traces) > 0:
             for id in self.plotted_traces:
@@ -370,13 +440,18 @@ class PlotRegion(SubPanel):
                 assert(spec) # Make sure spectrum is not null
                 self.PlotTrace(spec)
         else:
-            self.plot_panel.unzoom_all() # This call forces the plot to update visually
+            self.plot_panel.clear() # This call forces the plot to update visually
+            self.plot_panel.unzoom_all()
 
     def PlotTrace(self, t, **kwargs):
         '''
         Plot a trace object. Used internally to standardize plotting style.
         '''
-        self.plot_panel.oplot(t.getx(), t.gety(), label=t.name, show_legend=True, **kwargs)
+        if self.is_blank:
+            self.plot_panel.plot(t.getx(), t.gety(), label=t.name, show_legend=True, **kwargs)
+            self.is_blank = False
+        else:
+            self.plot_panel.oplot(t.getx(), t.gety(), label=t.name, show_legend=True, **kwargs)
 
 class Layout(wx.Frame):
 
@@ -431,12 +506,12 @@ class Layout(wx.Frame):
         '''
         self.Close()
 
-    def LoadData(self, e):
+    def LoadData(self, e, **kwargs):
         '''
         Load a new data trace.
         '''
         # Create dialog box
-        with LoadDialog(self, title="Load a delimited file...") as dialog:
+        with LoadDialog(self, **kwargs) as dialog:
 
             if dialog.ShowModal() == wx.ID_CANCEL:
                 return     # the user changed their mind

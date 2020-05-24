@@ -26,6 +26,7 @@ class Spectrum(object):
         self.frequnit = frequnit
 
         self.name = name
+        self.is_plotted = False
 
     def getx(self):
         return self.data[self.freqname]
@@ -33,6 +34,13 @@ class Spectrum(object):
     def gety(self):
         return self.data[self.specname]
 
+    def __str__(self):
+        return "{}: {}-{} {}".format(
+            self.name,
+            min(self.data[self.freqname]),
+            max(self.data[self.freqname]),
+            self.frequnit
+        )
 
 class DataSource(object):
     '''
@@ -91,15 +99,16 @@ class DataSource(object):
         self.trace_counter += 1
         return len(self.traces) - 1 # last index
 
-    def DeleteTrace(self, i):
+    def DeleteTrace(self, target_id):
         '''
-        Delete a trace from the manager
+        Delete a trace from the manager by its ID
         '''
-        if i >= 0 and i < len(self.traces):
-            self.traces.pop(i)
-            return True
-        else:
-            return False
+        for i in range(len(self.traces)):
+            if self.traces[i].id == target_id:
+                self.traces.pop(i)
+                return True
+        
+        return False
     
     def GetTraceByID(self, id):
         '''
