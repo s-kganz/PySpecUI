@@ -291,7 +291,7 @@ class DataTab(SubPanel):
                 itemData.is_plotted = False
                 self.tree.SetItemBold(event.GetItem(), bold=False)
             else:
-                # The double clicked item was a spectrum, plot it and make it boldface
+                # Plot it and make it boldface
                 wx.GetTopLevelParent(self.panel).AddTracesToPlot([itemData.id])
                 itemData.is_plotted = True
                 self.tree.SetItemBold(event.GetItem())
@@ -361,6 +361,7 @@ class TextPanel(SubPanel):
 class PlotRegion(SubPanel):
     def __init__(self, parent, datasrc):
         self.plotted_traces = []
+        self.is_blank = True
         super(PlotRegion, self).__init__(parent, datasrc)
 
     def InitUI(self):
@@ -408,7 +409,7 @@ class PlotRegion(SubPanel):
         '''
         Replot all loaded traces.
         '''
-        self.plot_panel.clear()
+        self.is_blank = True
         self.plot_panel.reset_config() # Remove old names of traces
         if len(self.plotted_traces) > 0:
             for id in self.plotted_traces:
@@ -417,13 +418,18 @@ class PlotRegion(SubPanel):
                 assert(spec) # Make sure spectrum is not null
                 self.PlotTrace(spec)
         else:
-            self.plot_panel.unzoom_all() # This call forces the plot to update visually
+            self.plot_panel.clear() # This call forces the plot to update visually
+            self.plot_panel.unzoom_all()
 
     def PlotTrace(self, t, **kwargs):
         '''
         Plot a trace object. Used internally to standardize plotting style.
         '''
-        self.plot_panel.oplot(t.getx(), t.gety(), label=t.name, show_legend=True, **kwargs)
+        if self.is_blank:
+            self.plot_panel.plot(t.getx(), t.gety(), label=t.name, show_legend=True, **kwargs)
+            self.is_blank = False
+        else:
+            self.plot_panel.oplot(t.getx(), t.gety(), label=t.name, show_legend=True, **kwargs)
 
 class Layout(wx.Frame):
 
