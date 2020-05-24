@@ -1,5 +1,6 @@
 from asyncio import get_event_loop
-from gui import App
+import gui
+from gui.app_ui import App
 from data import DataSource
 
 if __name__ == "__main__":
