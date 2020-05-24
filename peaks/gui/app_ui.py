@@ -18,6 +18,7 @@ from peaks.data.ds import DataSource
 from peaks.data.spec import Spectrum
 from peaks.gui.helpers import *
 from peaks.gui.dialogs import *
+from peaks.gui.popups import *
 
 class SubPanel():
     '''
@@ -114,54 +115,99 @@ class DataTab(SubPanel):
         # Bind events
         self.tree.Bind(wx.EVT_TREE_ITEM_ACTIVATED, self.OnDblClick)
         self.tree.Bind(wx.EVT_KEY_DOWN, self.OnKeyPress)
+        self.tree.Bind(wx.EVT_TREE_ITEM_RIGHT_CLICK, self.OnRgtClick)
 
+    # Tree modifiers
     def AddTrace(self, trace_idx):
+        '''
+        Add a new trace to the tree
+        '''
         field = str(self.datasrc.traces[trace_idx])
         self.tree.AppendItem(self.tree_spec, field, data=self.datasrc.traces[trace_idx])
 
-    def RemoveTrace(self, event):
-        pass
-
-    def OnDblClick(self, event):
-        itemData = self.tree.GetItemData(event.GetItem())
-        if type(itemData) == Spectrum:
-            if itemData.is_plotted:
+    def RemoveTrace(self, trace_item):
+        '''
+        Remove a trace from the tree, including from the plot window
+        if the spectrum is currently plotted.
+        '''
+        trace_data = self.tree.GetItemData(trace_item)
+        with wx.MessageDialog(
+                    self.panel,
+                    "Do you want to remove trace {}?".format(trace_data.name),
+                    style = wx.CENTRE | wx.YES_NO | wx.CANCEL
+                ) as dialog:
+                    if dialog.ShowModal() == wx.ID_YES:
+                        # Actually delete the trace from the plot, tree, and data manager
+                        self.tree.Delete(trace_item)
+                        wx.GetTopLevelParent(self.panel).RemoveTracesFromPlot([trace_data.id])
+                        self.datasrc.DeleteTrace(trace_data.id)
+    
+    def TogglePlotted(self, trace_item):
+        '''
+        Toggles whether the trace object is shown in the plot window.
+        '''
+        trace = self.tree.GetItemData(trace_item)
+        if trace.is_plotted:
                 # Remove the item from the plot
-                wx.GetTopLevelParent(self.panel).RemoveTracesFromPlot([itemData.id])
-                itemData.is_plotted = False
-                self.tree.SetItemBold(event.GetItem(), bold=False)
-            else:
-                # Plot it and make it boldface
-                wx.GetTopLevelParent(self.panel).AddTracesToPlot([itemData.id])
-                itemData.is_plotted = True
-                self.tree.SetItemBold(event.GetItem())
+                wx.GetTopLevelParent(self.panel).RemoveTracesFromPlot([trace.id])
+                trace.is_plotted = False
+                self.tree.SetItemBold(trace_item, bold=False)
+        else:
+            # Plot it and make it boldface
+            wx.GetTopLevelParent(self.panel).AddTracesToPlot([trace.id])
+            trace.is_plotted = True
+            self.tree.SetItemBold(trace_item, bold=True)
+
+    # Event handlers
+    def OnDblClick(self, event):
+        '''
+        Handles double-click events on tree entries. Depending on item type,
+        has the following behavior:
+
+        Spectrum: toggles whether the spectrum is plotted
+        Nodes: toggles whether the node is expanded/collapsed
+        '''
+        item = event.GetItem()
+        if type(self.tree.GetItemData(item)) == Spectrum:
+            self.TogglePlotted(item)
         else:
             # Expand/collapse this item
-            if self.tree.IsExpanded(event.GetItem()):
-                self.tree.Collapse(event.GetItem())
+            if self.tree.IsExpanded(item):
+                self.tree.Collapse(item)
             else:
-                self.tree.Expand(event.GetItem())
+                self.tree.Expand(item)
     
     def OnKeyPress(self, event):
+        '''
+        Handles key-press events. Defined for the following keys:
+
+        DELETE: If the highlighted tree item is a Spectrum, launch
+        a removal dialog window.
+        '''
         keycode = event.GetKeyCode()
         if keycode == wx.WXK_DELETE:
             # Determine if the current selection is a spectrum
             sel_item = self.tree.GetSelection()
             sel_data = self.tree.GetItemData(sel_item)
             if type(sel_data) == Spectrum:
-                # Launch a dialog to ask if the user actually wants to delete it
-                with wx.MessageDialog(
-                    self.panel,
-                    "Do you want to remove trace {}?".format(sel_data.name),
-                    style = wx.CENTRE | wx.YES_NO | wx.CANCEL
-                ) as dialog:
-                    if dialog.ShowModal() == wx.ID_YES:
-                        # Actually delete the trace from the plot, tree, and data manager
-                        self.tree.Delete(sel_item)
-                        wx.GetTopLevelParent(self.panel).RemoveTracesFromPlot([sel_data.id])
-                        self.datasrc.DeleteTrace(sel_data.id)
-        
+                self.RemoveTrace(sel_item)
+                        
         event.Skip() # Pass it up the chain
+    
+    def OnRgtClick(self, event):
+        '''
+        Handles right-click events by launching a context menu.
+        Defined for the following item types:
+
+        Spectrum: Shows a Remove | Add to plot popup menu. (See Menu_TreeCtrlSpectrum)
+        '''
+        # Figure out the type of the item involved
+        clk_item = event.GetItem()
+        popup = None
+        if type(self.tree.GetItemData(clk_item)) == Spectrum:
+            popup = Menu_TreeCtrlSpectrum(self, clk_item)
+        
+        if popup: self.tree.PopupMenu(popup, event.GetPoint())
 
 class TabPanel(SubPanel):
     '''
