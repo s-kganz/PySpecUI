@@ -2,7 +2,7 @@
 This file includes implementation of derived classes for building
 the application interface.
 '''
-
+# WX MODULES
 import wx
 from wx.lib.intctrl import IntCtrl
 from wx.lib.mixins.treemixin import DragAndDrop
@@ -10,9 +10,13 @@ from wx.lib import sized_controls
 from wxasync import AsyncBind, WxAsyncApp, StartCoroutine
 from wxmplot import PlotPanel
 
+# OTHER PYTHON MODULES
 import time
 import os
 import asyncio
+
+# OTHER MODULES
+from data import Spectrum
 
 class DragAndDropTree(wx.TreeCtrl, DragAndDrop):
     '''
@@ -113,7 +117,6 @@ class DirTreeCtrl(wx.TreeCtrl):
             
             abspath = os.path.join(*folders[::-1])
             
-            print(abspath)
             # Normally this function takes an event object so we pass None here
             wx.GetTopLevelParent(self).LoadData(None, path=abspath)
 
@@ -250,26 +253,54 @@ class DataTab(SubPanel):
         self.sizer = wx.BoxSizer(wx.VERTICAL)
 
         # Create the root nodes in the tree
-        self.tree = DragAndDropTree(self.panel, self.datasrc, style=wx.TR_HIDE_ROOT | wx.TR_ROW_LINES)
+        self.tree = DragAndDropTree(
+            self.panel, 
+            self.datasrc, 
+            style=wx.TR_DEFAULT_STYLE
+        )
         root = self.tree.AddRoot("Project")
+
         # Section headers
         self.tree_spec = self.tree.AppendItem(root, "Spectra")
         self.tree_mode = self.tree.AppendItem(root, "Models")
         self.tree_scpt = self.tree.AppendItem(root, "Scripts")
         self.tree_tchn = self.tree.AppendItem(root, "Tool Chains")
 
-        self.sizer.Add(self.tree, 1, wx.EXPAND)
+        # Show the tree by default
+        self.tree.Expand(root)
 
+        self.sizer.Add(self.tree, 1, wx.EXPAND)
         self.panel.SetSizer(self.sizer)
 
+        # Bind events
+        self.tree.Bind(wx.EVT_TREE_ITEM_ACTIVATED, self.OnDblClick)
+
     def AddTrace(self, trace_idx):
-        pass
+        field = str(self.datasrc.traces[trace_idx])
+        self.tree.AppendItem(self.tree_spec, field, data=self.datasrc.traces[trace_idx])
 
     def RemoveTrace(self, event):
         pass
-    
-    def OnPlot(self, event):
-        pass
+
+    def OnDblClick(self, event):
+        itemData = self.tree.GetItemData(event.GetItem())
+        if type(itemData) == Spectrum:
+            if itemData.is_plotted:
+                # Remove the item from the plot
+                wx.GetTopLevelParent(self.panel).RemoveTracesFromPlot([itemData.id])
+                itemData.is_plotted = False
+                self.tree.SetItemBold(event.GetItem(), bold=False)
+            else:
+                # The double clicked item was a spectrum, plot it and make it boldface
+                wx.GetTopLevelParent(self.panel).AddTracesToPlot([itemData.id])
+                itemData.is_plotted = True
+                self.tree.SetItemBold(event.GetItem())
+        else:
+            # Expand/collapse this item
+            if self.tree.IsExpanded(event.GetItem()):
+                self.tree.Collapse(event.GetItem())
+            else:
+                self.tree.Expand(event.GetItem())
 
 class TabPanel(SubPanel):
     '''
