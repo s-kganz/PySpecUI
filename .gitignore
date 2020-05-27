@@ -1,6 +1,12 @@
-wxpython
-examples
+# Dev environment + cython
 __pycache__
 .vscode
+
+# Environment, example code, toy data
+wxpython
+examples
+data
+
+# Organizational files
 features.txt
 schedule.txt
