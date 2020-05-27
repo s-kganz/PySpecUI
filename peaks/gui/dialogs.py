@@ -39,7 +39,7 @@ class LoadDialog(sized_controls.SizedDialog):
         wx.StaticText(parse_pane, label="Delimiter: ")
         self.delimCtrl = wx.Choice(
             parse_pane, choices=["Tab", "Comma", "Space"])
-        self.delimCtrl.SetSelection(0)
+        self.delimCtrl.SetSelection(1)
 
         # Header choice
         wx.StaticText(parse_pane, label="Parse headers: ")
@@ -70,10 +70,10 @@ class LoadDialog(sized_controls.SizedDialog):
         meta_pane.SetSizerProps(halign="left")
 
         wx.StaticText(meta_pane, label="Frequency unit: ")
-        self.freqUnitCtrl = wx.TextCtrl(meta_pane)
+        self.freqUnitCtrl = wx.TextCtrl(meta_pane, value='x')
 
         wx.StaticText(meta_pane, label="Spectral unit: ")
-        self.specUnitCtrl = wx.TextCtrl(meta_pane)
+        self.specUnitCtrl = wx.TextCtrl(meta_pane, value='y')
 
         # Third separating line
         line3 = wx.StaticLine(self.pane, style=wx.LI_HORIZONTAL)
