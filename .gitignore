@@ -5,7 +5,7 @@ __pycache__
 # Environment, example code, toy data
 wxpython
 examples
-data
+toydata
 
 # Organizational files
 features.txt
