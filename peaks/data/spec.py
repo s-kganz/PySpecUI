@@ -31,6 +31,23 @@ class Spectrum(object):
         self.name = name
         self.is_plotted = False
 
+    @classmethod
+    def FromDataframe(df, id=-1, specunit="", frequnit="",
+                      name="", freqcol=0, speccol=1):
+        '''
+        Initialize a new Spectrum object from a data frame.
+        '''
+        df_slice = df[[freqcol, speccol]]
+        return Spectrum(df, id, specunit=specunit, frequnit=frequnit,
+                        name=name, freqcol=0, speccol=1)
+
+    @classmethod
+    def FromArrays(freq, spec, id=-1, specunit="", frequnit="",
+                   name=""):
+        df = pd.DataFrame({'frequency': freq, 'signal': spec})
+        return Spectrum(df, id, specunit=specunit, frequnit=frequnit,
+                        name=name, freqcol=0, speccol=1)
+
     def getx(self):
         return self.data[self.freqname]
     
