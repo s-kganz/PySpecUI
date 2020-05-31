@@ -31,7 +31,7 @@ class Spectrum(object):
         self.name = name
         self.is_plotted = False
 
-    @classmethod
+    @staticmethod
     def FromDataframe(df, id=-1, specunit="", frequnit="",
                       name="", freqcol=0, speccol=1):
         '''
@@ -41,7 +41,7 @@ class Spectrum(object):
         return Spectrum(df, id, specunit=specunit, frequnit=frequnit,
                         name=name, freqcol=0, speccol=1)
 
-    @classmethod
+    @staticmethod
     def FromArrays(freq, spec, id=-1, specunit="", frequnit="",
                    name=""):
         df = pd.DataFrame({'frequency': freq, 'signal': spec})
