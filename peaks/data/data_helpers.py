@@ -11,6 +11,7 @@ class Trace():
         # constructor.
         if not hasattr(self, 'id'):
             self.id = -1
+        self.is_plotted = False
 
     def getx(self):
         '''
