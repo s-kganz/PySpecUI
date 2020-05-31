@@ -1,14 +1,15 @@
 '''
-Implementation of data manager class and underlying spectrum
-representation.
+Implementation of spectrum representation.
 '''
+
 import pandas as pd
 from os.path import basename
 
+from peaks.data.data_helpers import Trace
+
 __all__ = ["Spectrum"]
 
-
-class Spectrum(object):
+class Spectrum(Trace):
     '''
     Container for pandas dataframe representing the spectrum
     and other metadata.
@@ -16,6 +17,9 @@ class Spectrum(object):
 
     def __init__(self, df, id, specunit="", frequnit="",
                  name="", freqcol=0, speccol=None):
+        
+        super(Spectrum, self).__init__()
+        
         # Assign this spectrum an ID
         self.id = id
 
@@ -32,6 +36,8 @@ class Spectrum(object):
 
         self.name = name
         self.is_plotted = False
+
+        
 
     @staticmethod
     def FromDataframe(df, id=-1, specunit="", frequnit="",
@@ -50,11 +56,15 @@ class Spectrum(object):
         return Spectrum(df, id, specunit=specunit, frequnit=frequnit,
                         name=name, freqcol=0, speccol=1)
 
+    # Trace interface implementation
     def getx(self):
         return self.data[self.freqname]
 
     def gety(self):
         return self.data[self.specname]
+
+    def label(self):
+        return self.name
 
     def __str__(self):
         return "{}: {}-{} {}".format(
