@@ -1,5 +1,5 @@
 '''
-Mixins and other classes derived from stock wxpython controls
+Mixins and classes derived from stock wxpython controls
 '''
 
 import os
