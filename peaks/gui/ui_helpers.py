@@ -6,7 +6,7 @@ import os
 
 import wx
 from wx.lib.mixins.treemixin import DragAndDrop
-from peaks.gui.popups import Menu_TreeCtrlSpectrum
+from peaks.gui.popups import Menu_TreeCtrlTrace
 
 class DragAndDropTree(wx.TreeCtrl, DragAndDrop):
     '''
