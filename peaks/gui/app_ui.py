@@ -16,7 +16,7 @@ from asyncio import get_event_loop
 # OTHER MODULES
 from peaks.data.ds import DataSource
 from peaks.data.spec import Spectrum
-from peaks.gui.helpers import *
+from peaks.gui.ui_helpers import *
 from peaks.gui.dialogs import *
 from peaks.gui.popups import *
 
@@ -118,12 +118,14 @@ class DataTab(SubPanel):
         self.tree.Bind(wx.EVT_TREE_ITEM_RIGHT_CLICK, self.OnRgtClick)
 
     # Tree modifiers
-    def AddTrace(self, trace_idx):
+    def AddTrace(self, trace_id):
         '''
         Add a new trace to the tree
         '''
-        field = str(self.datasrc.traces[trace_idx])
-        self.tree.AppendItem(self.tree_spec, field, data=self.datasrc.traces[trace_idx])
+        trace = self.datasrc.GetTraceByID(trace_id)
+        assert(trace is not None)
+        field = str(trace)
+        self.tree.AppendItem(self.tree_spec, field, data=trace)
 
     def RemoveTrace(self, trace_item):
         '''
@@ -325,7 +327,7 @@ class PlotRegion(SubPanel):
             for id in self.plotted_traces:
                 # Get the trace from the data manager
                 spec = self.datasrc.GetTraceByID(id)
-                assert(spec) # Make sure spectrum is not null
+                assert(spec) # Make sure trace is not null
                 self.PlotTrace(spec)
         else:
             self.plot_panel.clear() # This call forces the plot to update visually
@@ -336,10 +338,10 @@ class PlotRegion(SubPanel):
         Plot a trace object. Used internally to standardize plotting style.
         '''
         if self.is_blank:
-            self.plot_panel.plot(t.getx(), t.gety(), label=t.name, show_legend=True, **kwargs)
+            self.plot_panel.plot(t.getx(), t.gety(), label=t.label(), show_legend=True, **kwargs)
             self.is_blank = False
         else:
-            self.plot_panel.oplot(t.getx(), t.gety(), label=t.name, show_legend=True, **kwargs)
+            self.plot_panel.oplot(t.getx(), t.gety(), label=t.label(), show_legend=True, **kwargs)
 
 class Layout(wx.Frame):
 
@@ -422,7 +424,7 @@ class Layout(wx.Frame):
             }
             traceInd = -1
             try:
-                traceInd = self.datasrc.addTraceFromCSV(path, options=options)
+                traceInd = self.datasrc.AddTraceFromCSV(path, options=options)
             except IOError as e:
                 wx.LogError("Cannot open file {}.".format(path))
                 wx.LogError(str(e))
