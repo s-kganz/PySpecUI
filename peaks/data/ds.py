@@ -2,6 +2,7 @@
 import pandas as pd
 from os.path import basename
 from peaks.data.spec import Spectrum
+from peaks.data.models import ModelGauss
 
 __all__ = ["DataSource"]
 
@@ -17,18 +18,23 @@ class DataSource(object):
         self.trace_counter = 0
 
         self.mode = 'ui' if self.app else 'repl'
+        
         self.delim_map = {
             "Tab": '\t',
             "Space": ' ',
             "Comma": ','
         }
 
-    def addTraceFromCSV(self, file, options = {}):
+    def GetNextId(self):
+        self.trace_counter += 1
+        return self.trace_counter
+
+    def AddTraceFromCSV(self, file, options = {}):
         '''
         Attempt to parse a new Spectrum object and add it to the
         data in memory.
 
-        Returns the index of the trace on a successful call.
+        Returns the new spectrum's trace id on a successsful call.
         '''
         # Attempt to read passed handle
         try:
@@ -51,16 +57,34 @@ class DataSource(object):
         
         # Pass remaining options to the spectrum constructor
         name = basename(file)
+        spec_id = self.GetNextId()
         self.traces.append(Spectrum(
             df,
-            self.trace_counter,
+            spec_id,
             specunit=options['specUnit'],
             frequnit=options['freqUnit'],
             freqcol=options["freqColInd"],
             name=name
         ))
-        self.trace_counter += 1
-        return len(self.traces) - 1 # last index
+        return spec_id
+
+    def CreateGaussModel(self, spec_id, **kwargs):
+        '''
+        Create a Gaussian model of the passed spectrum object.
+
+        Returns the model's trace id on a successful fit. Otherwise
+        returns None.
+        '''
+        # Construct the model object and fit it
+        mod_id = self.GetNextId()
+        mg = ModelGauss(self.GetTraceByID(spec_id), mod_id)
+        
+        if not mg.Fit(mg.ParamGuess(**kwargs)):
+            return None
+        
+        # On a successful fit, add the new model to memory
+        self.traces.append(mg)
+        return mod_id
 
     def DeleteTrace(self, target_id):
         '''
@@ -78,8 +102,8 @@ class DataSource(object):
         Return spectrum object corresponding to the given id. Returns
         None if no specturm was found
         '''
-        for spec in self.traces:
-            if spec.id == id:
-                return spec
+        for trace in self.traces:
+            if trace.id == id:
+                return trace
         
         return None

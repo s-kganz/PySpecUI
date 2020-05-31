@@ -16,7 +16,9 @@ from asyncio import get_event_loop
 # OTHER MODULES
 from peaks.data.ds import DataSource
 from peaks.data.spec import Spectrum
-from peaks.gui.helpers import *
+from peaks.data.models import Model
+from peaks.data.data_helpers import Trace
+from peaks.gui.ui_helpers import *
 from peaks.gui.dialogs import *
 from peaks.gui.popups import *
 
@@ -118,12 +120,20 @@ class DataTab(SubPanel):
         self.tree.Bind(wx.EVT_TREE_ITEM_RIGHT_CLICK, self.OnRgtClick)
 
     # Tree modifiers
-    def AddTrace(self, trace_idx):
+    def AddTrace(self, trace_id, type='spec'):
         '''
         Add a new trace to the tree
         '''
-        field = str(self.datasrc.traces[trace_idx])
-        self.tree.AppendItem(self.tree_spec, field, data=self.datasrc.traces[trace_idx])
+        trace = self.datasrc.GetTraceByID(trace_id)
+        hook = self.tree_spec if type == 'spec' else self.tree_mode
+        
+        try:
+            assert(trace is not None)
+        except AssertionError:
+            raise AssertionError("AddTrace received a null trace object!")
+
+        field = str(trace)
+        self.tree.AppendItem(hook, field, data=trace)
 
     def RemoveTrace(self, trace_item):
         '''
@@ -133,7 +143,7 @@ class DataTab(SubPanel):
         trace_data = self.tree.GetItemData(trace_item)
         with wx.MessageDialog(
                     self.panel,
-                    "Do you want to remove trace {}?".format(trace_data.name),
+                    "Do you want to remove trace {}?".format(trace_data.label()),
                     style = wx.CENTRE | wx.YES_NO | wx.CANCEL
                 ) as dialog:
                     if dialog.ShowModal() == wx.ID_YES:
@@ -168,7 +178,7 @@ class DataTab(SubPanel):
         Nodes: toggles whether the node is expanded/collapsed
         '''
         item = event.GetItem()
-        if type(self.tree.GetItemData(item)) == Spectrum:
+        if issubclass(type(self.tree.GetItemData(item)), Trace):
             self.TogglePlotted(item)
         else:
             # Expand/collapse this item
@@ -204,8 +214,8 @@ class DataTab(SubPanel):
         # Figure out the type of the item involved
         clk_item = event.GetItem()
         popup = None
-        if type(self.tree.GetItemData(clk_item)) == Spectrum:
-            popup = Menu_TreeCtrlSpectrum(self, clk_item)
+        if issubclass(type(self.tree.GetItemData(clk_item)), Trace):
+            popup = Menu_TreeCtrlTrace(self, clk_item)
         
         if popup: self.tree.PopupMenu(popup, event.GetPoint())
 
@@ -325,7 +335,7 @@ class PlotRegion(SubPanel):
             for id in self.plotted_traces:
                 # Get the trace from the data manager
                 spec = self.datasrc.GetTraceByID(id)
-                assert(spec) # Make sure spectrum is not null
+                assert(spec) # Make sure trace is not null
                 self.PlotTrace(spec)
         else:
             self.plot_panel.clear() # This call forces the plot to update visually
@@ -336,10 +346,10 @@ class PlotRegion(SubPanel):
         Plot a trace object. Used internally to standardize plotting style.
         '''
         if self.is_blank:
-            self.plot_panel.plot(t.getx(), t.gety(), label=t.name, show_legend=True, **kwargs)
+            self.plot_panel.plot(t.getx(), t.gety(), label=t.label(), show_legend=True, **kwargs)
             self.is_blank = False
         else:
-            self.plot_panel.oplot(t.getx(), t.gety(), label=t.name, show_legend=True, **kwargs)
+            self.plot_panel.oplot(t.getx(), t.gety(), label=t.label(), show_legend=True, **kwargs)
 
 class Layout(wx.Frame):
 
@@ -357,11 +367,14 @@ class Layout(wx.Frame):
 
         # Build menu bar
         menubar = wx.MenuBar()
+
+        # File submenu
         fileMenu = wx.Menu()
         # Quit option
         quitItem = fileMenu.Append(wx.ID_EXIT, 'Quit', 'Quit application')
         self.Bind(wx.EVT_MENU, self.OnQuit, quitItem)
 
+        # Data submenu
         dataMenu = wx.Menu()
         # Load option
         loadItem = dataMenu.Append(wx.ID_OPEN, 'Load', 'Load data')
@@ -371,9 +384,15 @@ class Layout(wx.Frame):
         self.Bind(wx.EVT_MENU, lambda x: StartCoroutine(
             self.SlowFunc(x), self), statItem)
 
+        # Fitting submeni
+        fitMenu = wx.Menu()
+        gaussItem = fitMenu.Append(wx.ID_ANY, 'Gaussian...', 'Fit Gaussian peaks to a spectrum')
+        self.Bind(wx.EVT_MENU, self.OnFitGauss, gaussItem)
+
         # Add submenus to overall menu bar
         menubar.Append(fileMenu, '&File')
         menubar.Append(dataMenu, '&Data')
+        menubar.Append(fitMenu, 'F&it')
         self.SetMenuBar(menubar)
 
         # Build main layout
@@ -399,7 +418,7 @@ class Layout(wx.Frame):
         Load a new data trace.
         '''
         # Create dialog box
-        with LoadDialog(self, **kwargs) as dialog:
+        with DialogLoad(self, **kwargs) as dialog:
 
             if dialog.ShowModal() == wx.ID_CANCEL:
                 return     # the user changed their mind
@@ -422,7 +441,7 @@ class Layout(wx.Frame):
             }
             traceInd = -1
             try:
-                traceInd = self.datasrc.addTraceFromCSV(path, options=options)
+                traceInd = self.datasrc.AddTraceFromCSV(path, options=options)
             except IOError as e:
                 wx.LogError("Cannot open file {}.".format(path))
                 wx.LogError(str(e))
@@ -430,7 +449,7 @@ class Layout(wx.Frame):
 
             if traceInd >= 0:
                 # Add the new trace to the tab panel
-                self.tab_pane.data_tab.AddTrace(traceInd)
+                self.tab_pane.data_tab.AddTrace(traceInd, type='spec')
 
     def AddTracesToPlot(self, traces):
         '''
@@ -450,6 +469,38 @@ class Layout(wx.Frame):
         Replot the given traces
         '''
         self.plt_pane.UpdatePlotTraces(traces)
+    
+    def OnFitGauss(self, event):
+        '''
+        Create a dialog for fitting Gaussian peaks to
+        spectra currently loaded.
+        '''
+        # Get all the spectra and their ids from the data manager
+        names = dict()
+        names = {t.name : t.id for t in self.datasrc.traces if type(t) == Spectrum}
+        with DialogGaussModel(self, names) as dialog:
+            if dialog.ShowModal() == wx.ID_CANCEL:
+                # they don't wanna fit after all :(
+                return
+            else:
+                # Get the spectrum to fit on
+                spec_sel = dialog.ctrl_spec_name.GetSelection()
+                spec_id = names[dialog.ctrl_spec_name.GetString(spec_sel)]
+
+                # Additional arguments for the fitting procedure
+                kwargs = {
+                    'peak_range': (
+                        dialog.ctrl_min_peaks.GetValue(),
+                        dialog.ctrl_max_peaks.GetValue()
+                    ),
+                    'polyorder': dialog.ctrl_poly_order.GetValue()
+                }
+                # Make the model
+                ret = self.datasrc.CreateGaussModel(spec_id, **kwargs)
+
+                # Add the new model to the data tab
+                self.tab_pane.data_tab.AddTrace(ret, type='model')
+                return ret
 
     async def SlowFunc(self, e):
         '''
@@ -466,7 +517,7 @@ class App(WxAsyncApp):
         super(App, self).__init__()
 
     def OnInit(self):
-        self.layout = Layout(None, title='Layout test', datasrc=self.datasrc)
+        self.layout = Layout(None, title='PyPeaks', datasrc=self.datasrc)
         self.layout.Show()
         return True
 
