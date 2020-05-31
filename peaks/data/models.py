@@ -15,6 +15,9 @@ import numpy as np
 from scipy import signal
 from scipy.optimize import least_squares
 
+from peaks.data.data_helpers import Trace
+
+__all__ = ["ModelGauss"]
 
 def r_squared(a, b):
     '''
@@ -35,9 +38,13 @@ class Model(object):
 
     def __init__(self, spec):
         self.spectrum = spec  # The spectrum associated with this model
+
         self.params = []  # For a sum of n functions, each accepting m
-        # parameters, this becomes a flat array with
-        # m * n elements
+                          # parameters, this becomes a flat array with
+                          # m * n elements
+
+        self.trace = None # The prediction this model makes on the frequency domain
+                          # of the spectrum.
 
     @staticmethod
     def Func():
@@ -75,14 +82,19 @@ class Model(object):
             "Model parameter estimation must be defined!")
 
 
-class ModelGauss(Model):
+class ModelGauss(Model, Trace):
     '''
     Model utilizing Gaussian peaks to fit spectra.
     '''
 
-    def __init__(self, spec, peak_range=(0, None)):
+    def __init__(self, spec, id):
+        # Call the parents directly to ensure that they
+        # actually get called
+        Model.__init__(self)
+        Trace.__init__(self)
+        self.id = id
         self.peak_range = peak_range
-        super(ModelGauss, self).__init__(spec)
+        self.model_name = "Gaussian"
 
     @staticmethod
     def Func(x, a, mu, sigma):
@@ -102,7 +114,7 @@ class ModelGauss(Model):
         Params must be a 1D array with 3*n elements, where n
         is the number of Gaussian peaks specified
         '''
-        if type(params) == type(None):
+        if params is None:
             params = self.params
 
         x = self.spectrum.getx()
@@ -113,7 +125,7 @@ class ModelGauss(Model):
 
         return ret
 
-    def ParamGuess(self, polyorder=2, winlen=None):
+    def ParamGuess(self, polyorder=2, winlen=None, peak_range=(0, None)):
         '''
         Guess gaussian peak parameters from minima in the second derivative.
 
@@ -147,7 +159,7 @@ class ModelGauss(Model):
 
         accepted = []
 
-        min_peaks, max_peaks = self.peak_range[0], self.peak_range[1]
+        min_peaks, max_peaks = peak_range[0], self.peak_range[1]
         for i in range(len(candidates)):
             # Keep peaks whose parameters are reasonable
             # nothing 0 or less
@@ -174,7 +186,7 @@ class ModelGauss(Model):
     def Fit(self, params):
         '''
         Tune passed set of parameters with an optimizer. Returns a Boolean
-        indicating whether fitting was successful
+        indicating whether fitting was successful.
         '''
         true_signal = self.spectrum.gety()
         fit_result = least_squares(
@@ -184,6 +196,7 @@ class ModelGauss(Model):
             method='trf')
 
         self.params = fit_result['x']
+        self.trace = self.EvalModel()
         return True
 
     def Predict(self, x):
@@ -199,3 +212,27 @@ class ModelGauss(Model):
             ret += ModelGauss.Func(x, params[i], params[i+1], params[i+2])
 
         return ret
+    
+    # Implementation of trace interface
+    def getx(self):
+        '''
+        Return the domain of the underlying spectrum object.
+        '''
+        return self.spectrum.getx()
+
+    def gety(self):
+        '''
+        Return the prediction this model makes on the domain
+        of the spectrum object. This is kept in memory since this function
+        may be called many times by plotting functions.
+        '''
+        if self.trace is None:
+            raise ValueError("Model has not been fully fitted, cannot plot.")
+
+        return self.trace
+
+    def label(self):
+        '''
+        Legend label for when the model is plotted.
+        '''
+        return "{} ({})".format(self.spectrum.name, self.model_name)
