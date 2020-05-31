@@ -3,13 +3,13 @@ Derived classes of wx.Menu for context popup menus
 '''
 import wx
 
-class Menu_TreeCtrlSpectrum(wx.Menu):
+class Menu_TreeCtrlTrace(wx.Menu):
     '''
     Context menu for when a spectrum is right clicked
     in the data tab.
     '''
     def __init__(self, parent, item):
-        super(Menu_TreeCtrlSpectrum, self).__init__()
+        super(Menu_TreeCtrlTrace, self).__init__()
         self.parent = parent
 
         # Tree item associated with this menu
