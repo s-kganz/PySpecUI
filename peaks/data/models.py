@@ -90,10 +90,9 @@ class ModelGauss(Model, Trace):
     def __init__(self, spec, id):
         # Call the parents directly to ensure that they
         # actually get called
-        Model.__init__(self)
+        Model.__init__(self, spec)
         Trace.__init__(self)
         self.id = id
-        self.peak_range = peak_range
         self.model_name = "Gaussian"
 
     @staticmethod
@@ -150,16 +149,15 @@ class ModelGauss(Model, Trace):
 
         # Get the widths as well for calculating sigma
         widths = signal.peak_widths(-d2, peaks)
-
+        min_peaks, max_peaks = peak_range[0], peak_range[1]
         # Wrap up all candidate peaks together, determine the best ones by how much
         # they improve model fit
         candidates = list(zip(sig[peaks], peaks, widths[0] / 2))
-        # sort by peak size
-        candidates.sort(key=lambda x: x[0], reverse=True)
-
+        # sort by peak size, then width, cut off extra peaks
+        candidates.sort(key=lambda x: (x[2], x[0]), reverse=True)
         accepted = []
 
-        min_peaks, max_peaks = peak_range[0], self.peak_range[1]
+        
         for i in range(len(candidates)):
             # Keep peaks whose parameters are reasonable
             # nothing 0 or less
@@ -173,11 +171,11 @@ class ModelGauss(Model, Trace):
             accepted.extend(candidates[i])
 
             # Stop if max peaks reached
-            if len(accepted) == max_peaks:
+            if len(accepted) // 3 == max_peaks:
                 break
 
         # Raise a warning if minimum number of peaks was not reached
-        if len(accepted) < min_peaks:
+        if len(accepted) // 3 < min_peaks:
             print("Only found {} peaks (minimum was {})".format(
                 len(accepted), min_peaks))
 
@@ -236,3 +234,6 @@ class ModelGauss(Model, Trace):
         Legend label for when the model is plotted.
         '''
         return "{} ({})".format(self.spectrum.name, self.model_name)
+
+    def __str__(self):
+        return self.label()
