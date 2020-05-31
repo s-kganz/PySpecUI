@@ -68,7 +68,7 @@ class DataSource(object):
         ))
         return spec_id
 
-    def CreateGaussModel(self, spec, **kwargs):
+    def CreateGaussModel(self, spec_id, **kwargs):
         '''
         Create a Gaussian model of the passed spectrum object.
 
@@ -77,7 +77,7 @@ class DataSource(object):
         '''
         # Construct the model object and fit it
         mod_id = self.GetNextId()
-        mg = ModelGauss(spec, mod_id)
+        mg = ModelGauss(self.GetTraceByID(spec_id), mod_id)
         
         if not mg.Fit(mg.ParamGuess(**kwargs)):
             return None
