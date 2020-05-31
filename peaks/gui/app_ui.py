@@ -123,7 +123,12 @@ class DataTab(SubPanel):
         Add a new trace to the tree
         '''
         trace = self.datasrc.GetTraceByID(trace_id)
-        assert(trace is not None)
+        
+        try:
+            assert(trace is not None)
+        except AssertionError:
+            raise AssertionError("AddTrace received a null trace object!")
+
         field = str(trace)
         self.tree.AppendItem(self.tree_spec, field, data=trace)
 
