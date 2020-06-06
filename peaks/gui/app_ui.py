@@ -133,7 +133,8 @@ class DataTab(SubPanel):
             raise AssertionError("AddTrace received a null trace object!")
 
         field = str(trace)
-        self.tree.AppendItem(hook, field, data=trace)
+        newid = self.tree.AppendItem(hook, field, data=trace)
+        self.tree.EnsureVisible(newid)
 
     def RemoveTrace(self, trace_item):
         '''

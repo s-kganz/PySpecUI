@@ -67,9 +67,9 @@ class Spectrum(Trace):
         return self.name
 
     def __str__(self):
-        return "{}: {}-{} {}".format(
+        return "{}: {:.1f}-{:.1f} {}".format(
             self.name,
-            min(self.data[self.freqname]),
-            max(self.data[self.freqname]),
+            float(min(self.data[self.freqname])),
+            float(max(self.data[self.freqname])),
             self.frequnit
         )
