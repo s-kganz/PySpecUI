@@ -22,6 +22,7 @@ from peaks.gui.ui_helpers import *
 from peaks.gui.dialogs import *
 from peaks.gui.popups import *
 
+
 class SubPanel():
     '''
     Superclass for panels in the application that implement their own widgets. Derived
@@ -44,7 +45,8 @@ class SubPanel():
         Unimplemented functions as a placeholder for custom widgets
         defined by derived classes.
         '''
-        raise NotImplementedError("InitUI must be defined for all derived subpanels")
+        raise NotImplementedError(
+            "InitUI must be defined for all derived subpanels")
 
     def GetPanel(self):
         '''
@@ -53,11 +55,13 @@ class SubPanel():
         '''
         return self.panel
 
+
 class CatalogTab(SubPanel):
     '''
     Implements a window for viewing files in the current working directory
     and a file selection control for changing the working directory.
     '''
+
     def __init__(self, parent, datasrc):
         super(CatalogTab, self).__init__(parent, datasrc)
 
@@ -78,22 +82,24 @@ class CatalogTab(SubPanel):
             abspath = self.tree.GetPath(act_item)
             wx.GetTopLevelParent(self.panel).LoadData(None, path=abspath)
 
+
 class DataTab(SubPanel):
     '''
     Implements UI elements for the trace window on the right hand side
     of the screen.
     '''
+
     def __init__(self, parent, datasrc):
         self.btns = []
         super(DataTab, self).__init__(parent, datasrc)
-    
+
     def InitUI(self):
         self.sizer = wx.BoxSizer(wx.VERTICAL)
 
         # Create the root nodes in the tree
         self.tree = DragAndDropTree(
-            self.panel, 
-            self.datasrc, 
+            self.panel,
+            self.datasrc,
             style=wx.TR_DEFAULT_STYLE
         )
         root = self.tree.AddRoot("Project")
@@ -122,7 +128,7 @@ class DataTab(SubPanel):
         '''
         trace = self.datasrc.GetTraceByID(trace_id)
         hook = self.tree_spec if type == 'spec' else self.tree_mode
-        
+
         try:
             assert(trace is not None)
         except AssertionError:
@@ -139,29 +145,29 @@ class DataTab(SubPanel):
         '''
         trace_data = self.tree.GetItemData(trace_item)
         with wx.MessageDialog(
-                    self.panel,
-                    "Do you want to remove trace {}?".format(trace_data.label()),
-                    style = wx.CENTRE | wx.YES_NO | wx.CANCEL
-                ) as dialog:
-                    if dialog.ShowModal() == wx.ID_YES:
-                        # Actually delete the trace from the plot, tree, and data manager
-                        self.tree.Delete(trace_item)
-                        wx.GetTopLevelParent(self.panel).RemoveTracesFromPlot([trace_data.id])
-                        self.datasrc.DeleteTrace(trace_data.id)
-    
+            self.panel,
+            "Do you want to remove trace {}?".format(trace_data.label()),
+            style=wx.CENTRE | wx.YES_NO | wx.CANCEL
+        ) as dialog:
+            if dialog.ShowModal() == wx.ID_YES:
+                # Actually delete the trace from the plot, tree, and data manager
+                self.tree.Delete(trace_item)
+                wx.GetTopLevelParent(self.panel).RemoveTraceFromPlot(trace_data.id)
+                self.datasrc.DeleteTrace(trace_data.id)
+
     def TogglePlotted(self, trace_item):
         '''
         Toggles whether the trace object is shown in the plot window.
         '''
         trace = self.tree.GetItemData(trace_item)
         if trace.is_plotted:
-                # Remove the item from the plot
-                wx.GetTopLevelParent(self.panel).RemoveTracesFromPlot([trace.id])
-                trace.is_plotted = False
-                self.tree.SetItemBold(trace_item, bold=False)
+            # Remove the item from the plot
+            wx.GetTopLevelParent(self.panel).RemoveTraceFromPlot(trace.id)
+            trace.is_plotted = False
+            self.tree.SetItemBold(trace_item, bold=False)
         else:
             # Plot it and make it boldface
-            wx.GetTopLevelParent(self.panel).AddTracesToPlot([trace.id])
+            wx.GetTopLevelParent(self.panel).AddTraceToPlot(trace.id)
             trace.is_plotted = True
             self.tree.SetItemBold(trace_item, bold=True)
 
@@ -183,7 +189,7 @@ class DataTab(SubPanel):
                 self.tree.Collapse(item)
             else:
                 self.tree.Expand(item)
-    
+
     def OnKeyPress(self, event):
         '''
         Handles key-press events. Defined for the following keys:
@@ -198,9 +204,9 @@ class DataTab(SubPanel):
             sel_data = self.tree.GetItemData(sel_item)
             if type(sel_data) == Spectrum:
                 self.RemoveTrace(sel_item)
-                        
-        event.Skip() # Pass it up the chain
-    
+
+        event.Skip()  # Pass it up the chain
+
     def OnRgtClick(self, event):
         '''
         Handles right-click events by launching a context menu.
@@ -213,13 +219,16 @@ class DataTab(SubPanel):
         popup = None
         if issubclass(type(self.tree.GetItemData(clk_item)), Trace):
             popup = Menu_TreeCtrlTrace(self, clk_item)
-        
-        if popup: self.tree.PopupMenu(popup, event.GetPoint())
+
+        if popup:
+            self.tree.PopupMenu(popup, event.GetPoint())
+
 
 class TabPanel(SubPanel):
     '''
     Class implementing a notebook-style collection of panels.
     '''
+
     def __init__(self, parent, datasrc, ntabs=4):
         self.ntabs = ntabs
         self.data_tab_idx = 0
@@ -238,7 +247,7 @@ class TabPanel(SubPanel):
 
         self.catalog = CatalogTab(nb, self.datasrc)
         tabs.append(self.catalog.GetPanel())
-  
+
         # Names of each tab
         names = ["Data", "Directory"]
         # Add all tabs to the notebook object
@@ -252,10 +261,12 @@ class TabPanel(SubPanel):
 
         self.panel.SetSizerAndFit(sizer)
 
+
 class TextPanel(SubPanel):
     '''
     Static panel showing a centered StaticText control
     '''
+
     def __init__(self, parent, datasrc, text=wx.EmptyString):
         self.text = text
         super(TextPanel, self).__init__(parent, datasrc)
@@ -298,21 +309,36 @@ class PlotRegion(SubPanel):
     def CoordMessage(self, s, **kwargs):
         app = wx.GetApp()
         app.layout.status.SetStatusText(s)
-    
+
     def AddTracesToPlot(self, traces):
-        # Add data to the plot if it is not already present
+        '''
+        Reset the current plot and show all passed traces
+        '''
+        to_plot = []
+        self.plotted_traces.clear()
         for t in self.datasrc.traces:
-            if (t.id in traces) and (t.id not in self.plotted_traces):
-                self.PlotTrace(t)
+            if t.id in traces:
+                to_plot.append(t)
                 self.plotted_traces.append(t.id)
-    
-    def RemoveTracesFromPlot(self, traces):
-        # Remove traces to be discarded
+
+        self.PlotMany(to_plot)
+
+    def AddTraceToPlot(self, trace):
+        '''
+        Add a single trace to the plot
+        '''
+        self.PlotTrace(self.datasrc.GetTraceByID(trace))
+        self.plotted_traces.append(trace)
+
+    def RemoveTraceFromPlot(self, trace):
+        '''
+        Remove a single trace from the plot
+        '''
         i = 0
         while i < len(self.plotted_traces):
-            if self.plotted_traces[i] in traces:
+            if self.plotted_traces[i] == trace:
                 self.plotted_traces.pop(i)
-                continue
+                break
             i += 1
         # Clear and re-draw the plot
         self.Replot()
@@ -321,21 +347,23 @@ class PlotRegion(SubPanel):
         # stub
         # Replot the passed traces if they are present
         print("Updating traces {}".format(traces))
-    
+
     def Replot(self):
         '''
         Replot all loaded traces.
         '''
         self.is_blank = True
-        self.plot_panel.reset_config() # Remove old names of traces
+        self.plot_panel.reset_config()  # Remove old names of traces
         if len(self.plotted_traces) > 0:
+            to_plot = list()
             for id in self.plotted_traces:
                 # Get the trace from the data manager
                 spec = self.datasrc.GetTraceByID(id)
-                assert(spec) # Make sure trace is not null
-                self.PlotTrace(spec)
+                assert(spec)  # Make sure trace is not null
+                to_plot.append(spec)
+            self.PlotMany(to_plot)
         else:
-            self.plot_panel.clear() # This call forces the plot to update visually
+            self.plot_panel.clear()  # This call forces the plot to update visually
             self.plot_panel.unzoom_all()
 
     def PlotTrace(self, t, **kwargs):
@@ -343,10 +371,29 @@ class PlotRegion(SubPanel):
         Plot a trace object. Used internally to standardize plotting style.
         '''
         if self.is_blank:
-            self.plot_panel.plot(t.getx(), t.gety(), label=t.label(), show_legend=True, **kwargs)
+            self.plot_panel.plot(t.getx(), t.gety(),
+                                 label=t.label(), show_legend=True, **kwargs)
             self.is_blank = False
         else:
-            self.plot_panel.oplot(t.getx(), t.gety(), label=t.label(), show_legend=True, **kwargs)
+            self.plot_panel.oplot(t.getx(), t.gety(),
+                                  label=t.label(), show_legend=True, **kwargs)
+
+    def PlotMany(self, traces, **kwargs):
+        '''
+        Plot a list of trace objects
+        '''
+        if len(traces) > 0:
+            # Get x and y arrays for each trace and associate labels with each
+            plot_dict = [
+                {
+                    'xdata': t.getx(),
+                    'ydata': t.gety(),
+                    'label': t.label()}
+                for t in traces
+            ]
+            self.plot_panel.plot_many(plot_dict, show_legend=True)
+            self.is_blank = False
+
 
 class Layout(wx.Frame):
 
@@ -382,7 +429,8 @@ class Layout(wx.Frame):
 
         # Fitting submeni
         fitMenu = wx.Menu()
-        gaussItem = fitMenu.Append(wx.ID_ANY, 'Gaussian...', 'Fit Gaussian peaks to a spectrum')
+        gaussItem = fitMenu.Append(
+            wx.ID_ANY, 'Gaussian...', 'Fit Gaussian peaks to a spectrum')
         self.Bind(wx.EVT_MENU, self.OnFitGauss, gaussItem)
 
         # Add submenus to overall menu bar
@@ -398,7 +446,8 @@ class Layout(wx.Frame):
         self.plt_pane = PlotRegion(splitter, self.datasrc)
         self.tab_pane = TabPanel(splitter, self.datasrc, ntabs=3)
 
-        splitter.SplitVertically(self.plt_pane.GetPanel(), self.tab_pane.GetPanel())
+        splitter.SplitVertically(
+            self.plt_pane.GetPanel(), self.tab_pane.GetPanel())
         splitter.SetMinimumPaneSize(300)
 
         # Put the splitter in a sizer
@@ -406,8 +455,6 @@ class Layout(wx.Frame):
         sizer.Add(splitter, 1, wx.EXPAND)
         self.SetSizerAndFit(sizer)
         self.Centre()
-        
-
 
     def OnQuit(self, e):
         '''
@@ -453,25 +500,24 @@ class Layout(wx.Frame):
                 # Add the new trace to the tab panel
                 self.tab_pane.data_tab.AddTrace(traceInd, type='spec')
 
-    def AddTracesToPlot(self, traces):
+    def AddTraceToPlot(self, trace):
         '''
-        Pull the given traces from the data manager and add them to the
-        plot.
+        Pull the given trace from the data manager and add it to the plot
         '''
-        self.plt_pane.AddTracesToPlot(traces)
+        self.plt_pane.AddTraceToPlot(trace)
 
-    def RemoveTracesFromPlot(self, traces):
+    def RemoveTraceFromPlot(self, trace):
         '''
         Remove the given traces from the plot window.
         '''
-        self.plt_pane.RemoveTracesFromPlot(traces)
-    
+        self.plt_pane.RemoveTraceFromPlot(trace)
+
     def UpdatePlotTraces(self, traces):
         '''
         Replot the given traces
         '''
         self.plt_pane.UpdatePlotTraces(traces)
-    
+
     def OnFitGauss(self, event):
         '''
         Create a dialog for fitting Gaussian peaks to
@@ -479,14 +525,15 @@ class Layout(wx.Frame):
         '''
         # Get all the spectra and their ids from the data manager
         names = dict()
-        names = {t.name : t.id for t in self.datasrc.traces if type(t) == Spectrum}
-        
+        names = {
+            t.name: t.id for t in self.datasrc.traces if type(t) == Spectrum}
+
         # Don't try to fit if no spectra are loaded
         if not len(names) > 0:
             with wx.MessageDialog(self, "No spectra available to fit.") as dialog:
                 dialog.ShowModal()
                 return
-        
+
         with DialogGaussModel(self, names) as dialog:
             if dialog.ShowModal() == wx.ID_CANCEL:
                 # they don't wanna fit after all :(
@@ -533,6 +580,7 @@ class App(WxAsyncApp):
         self.layout = Layout(None, title='PyPeaks', datasrc=self.datasrc)
         self.layout.Show()
         return True
+
 
 def start_app():
     ds = DataSource()
