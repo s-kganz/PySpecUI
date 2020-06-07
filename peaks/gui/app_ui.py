@@ -250,7 +250,7 @@ class TabPanel(SubPanel):
         sizer = wx.BoxSizer()
         sizer.Add(nb, 1, wx.EXPAND)
 
-        self.panel.SetSizer(sizer)
+        self.panel.SetSizerAndFit(sizer)
 
 class TextPanel(SubPanel):
     '''
@@ -293,7 +293,7 @@ class PlotRegion(SubPanel):
         vbox.Add(self.plot_panel, 2, wx.EXPAND)
         vbox.Add(self.plot_data.GetPanel(), 1, wx.EXPAND)
 
-        self.panel.SetSizer(vbox)
+        self.panel.SetSizerAndFit(vbox)
 
     def CoordMessage(self, s, **kwargs):
         app = wx.GetApp()
@@ -357,7 +357,6 @@ class Layout(wx.Frame):
         self.Centre()
 
     def InitUI(self):
-        panel = wx.Panel(self)
         # Build status bar
         self.status = self.CreateStatusBar()
         self.status.SetStatusText('Ready')
@@ -392,17 +391,23 @@ class Layout(wx.Frame):
         menubar.Append(fitMenu, 'F&it')
         self.SetMenuBar(menubar)
 
-        # Build main layout
-        hbox = wx.BoxSizer(wx.HORIZONTAL)
-        # Create the subclassed panels
-        hbox = wx.BoxSizer(wx.HORIZONTAL)
-        self.plt_pane = PlotRegion(panel, self.datasrc)
-        self.tab_pane = TabPanel(panel, self.datasrc, ntabs=3)
-        # Create a second control
-        hbox.Add(self.plt_pane.GetPanel(), 2, wx.EXPAND)
-        hbox.Add(self.tab_pane.GetPanel(), 1, wx.EXPAND)
+        # Build the main layout, splitting between the left and right
+        # Live update prevents flashing a black line on resize
+        splitter = wx.SplitterWindow(self, style=wx.SP_LIVE_UPDATE)
 
-        panel.SetSizerAndFit(hbox)
+        self.plt_pane = PlotRegion(splitter, self.datasrc)
+        self.tab_pane = TabPanel(splitter, self.datasrc, ntabs=3)
+
+        splitter.SplitVertically(self.plt_pane.GetPanel(), self.tab_pane.GetPanel())
+        splitter.SetMinimumPaneSize(300)
+
+        # Put the splitter in a sizer
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(splitter, 1, wx.EXPAND)
+        self.SetSizerAndFit(sizer)
+        self.Centre()
+        
+
 
     def OnQuit(self, e):
         '''
