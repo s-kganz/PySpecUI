@@ -59,28 +59,24 @@ class CatalogTab(SubPanel):
     and a file selection control for changing the working directory.
     '''
     def __init__(self, parent, datasrc):
-        self.cwd = os.getcwd()
         super(CatalogTab, self).__init__(parent, datasrc)
 
     def InitUI(self):
         vsizer = wx.BoxSizer(wx.VERTICAL)
 
-        # Control for the current working directory
-        self.dirctrl = wx.DirPickerCtrl(self.panel, path=self.cwd)
-        vsizer.Add(self.dirctrl, 0)
-
         # View for files in the current working directory
-        self.tree = DirTreeCtrl(self.panel, datasrc=self.datasrc)
+        self.tree = wx.GenericDirCtrl(self.panel, dir=os.getcwd())
+        self.tree.Bind(wx.EVT_DIRCTRL_FILEACTIVATED, self.OnDblClick)
         vsizer.Add(self.tree, 1, wx.EXPAND)
 
         self.panel.SetSizer(vsizer)
 
-        # Bind a change in the selection to updating the field
-        self.panel.Bind(wx.EVT_DIRPICKER_CHANGED, self.OnDirChanged)
-
-    def OnDirChanged(self, event):
-        newpath = self.dirctrl.GetPath()
-        self.tree.setwd(newpath)
+    def OnDblClick(self, event):
+        act_item = event.GetItem()
+        if not self.tree.GetTreeCtrl().GetChildrenCount(act_item) > 0:
+            # Get the path associated with this tree item and load it
+            abspath = self.tree.GetPath(act_item)
+            wx.GetTopLevelParent(self.panel).LoadData(None, path=abspath)
 
 class DataTab(SubPanel):
     '''
