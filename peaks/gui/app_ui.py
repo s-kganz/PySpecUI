@@ -475,6 +475,13 @@ class Layout(wx.Frame):
         # Get all the spectra and their ids from the data manager
         names = dict()
         names = {t.name : t.id for t in self.datasrc.traces if type(t) == Spectrum}
+        
+        # Don't try to fit if no spectra are loaded
+        if not len(names) > 0:
+            with wx.MessageDialog(self, "No spectra available to fit.") as dialog:
+                dialog.ShowModal()
+                return
+        
         with DialogGaussModel(self, names) as dialog:
             if dialog.ShowModal() == wx.ID_CANCEL:
                 # they don't wanna fit after all :(
@@ -493,7 +500,11 @@ class Layout(wx.Frame):
                     'polyorder': dialog.ctrl_poly_order.GetValue()
                 }
                 # Make the model
-                ret = self.datasrc.CreateGaussModel(spec_id, **kwargs)
+                try:
+                    ret = self.datasrc.CreateGaussModel(spec_id, **kwargs)
+                except Exception as e:
+                    wx.LogError(str(e))
+                    return
 
                 # Add the new model to the data tab
                 self.tab_pane.data_tab.AddTrace(ret, type='model')

@@ -159,6 +159,10 @@ class ModelGauss(Model, Trace):
 
         
         for i in range(len(candidates)):
+            # Stop if max peaks reached
+            if len(accepted) // 3 == max_peaks:
+                break
+            
             # Keep peaks whose parameters are reasonable
             # nothing 0 or less
             if any(c < 0 or np.isclose(c, 0) for c in candidates[i]):
@@ -170,14 +174,13 @@ class ModelGauss(Model, Trace):
             # Accept the new peak
             accepted.extend(candidates[i])
 
-            # Stop if max peaks reached
-            if len(accepted) // 3 == max_peaks:
-                break
-
-        # Raise a warning if minimum number of peaks was not reached
+        # Raise an error if minimum number of peaks was not reached
         if len(accepted) // 3 < min_peaks:
-            print("Only found {} peaks (minimum was {})".format(
-                len(accepted), min_peaks))
+            raise RuntimeError("[ModelGauss.ParamGuess]: Minimum number of peaks not"
+                               "reached ({} vs. min of {})".format(len(accepted), min_peaks))
+        # Raise an error if no peaks were found
+        if len(accepted) == 0:
+            raise RuntimeError("[ModelGauss.ParamGuess]: No peaks found!")
 
         return accepted
 

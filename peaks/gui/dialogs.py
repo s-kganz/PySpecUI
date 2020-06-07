@@ -119,10 +119,10 @@ class DialogGaussModel(sized_controls.SizedDialog):
         # Top section: pick the spectrum
         wx.StaticText(spec_pane, label="Spectrum to fit:")
         trace_names = list(traces.keys())
-        self.ctrl_spec_name = wx.ListBox(
+        self.ctrl_spec_name = wx.Choice(
             spec_pane, 
-            choices=trace_names, 
-            style=wx.LB_SINGLE)
+            choices=trace_names)
+        self.ctrl_spec_name.SetSelection(0)
         
         line = wx.StaticLine(self.pane, style=wx.LI_HORIZONTAL)
         line.SetSizerProps(border=(('all', 5)), expand=True)
@@ -134,11 +134,11 @@ class DialogGaussModel(sized_controls.SizedDialog):
         # Bottom: fitting parameters
         wx.StaticText(model_pane, label="Minimum number of peaks to fit:")
         self.ctrl_min_peaks = IntCtrl(
-            model_pane, min=0, value=None, allow_none=True
+            model_pane, min=0, value=0, allow_none=False
         )
         wx.StaticText(model_pane, label="Maximum number of peaks to fit:")
         self.ctrl_max_peaks = IntCtrl(
-            model_pane, min=1, value=None, allow_none=True
+            model_pane, min=1, value=5, allow_none=False
         )
         wx.StaticText(model_pane, label="Savitsky-Golay polynomial order:")
         self.ctrl_poly_order = IntCtrl(
@@ -156,14 +156,14 @@ class DialogGaussModel(sized_controls.SizedDialog):
         btns_pane.SetSizerProps(align="center")
 
         button_ok = wx.Button(btns_pane, wx.ID_OK, label='OK')
-        button_ok.Bind(wx.EVT_BUTTON, self.on_button)
+        button_ok.Bind(wx.EVT_BUTTON, self.OnButton)
 
         button_cancel = wx.Button(btns_pane, wx.ID_CANCEL, label='Cancel')
-        button_cancel.Bind(wx.EVT_BUTTON, self.on_button)
+        button_cancel.Bind(wx.EVT_BUTTON, self.OnButton)
 
         self.Fit()
 
-    def on_button(self, event):
+    def OnButton(self, event):
         if self.IsModal():
             self.EndModal(event.EventObject.Id)
         else:
