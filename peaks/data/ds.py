@@ -16,8 +16,6 @@ class DataSource(object):
         self.app = app # Connection to the UI
         self.traces = []
         self.trace_counter = 0
-
-        self.mode = 'ui' if self.app else 'repl'
         
         self.delim_map = {
             "Tab": '\t',
@@ -36,14 +34,24 @@ class DataSource(object):
 
         Returns the new spectrum's trace id on a successsful call.
         '''
+        # Default read parameters
+        read_opts = {
+            'sep': 'Comma',
+            'skiprows' : 0,
+            'comment': '#',
+            'freqUnit': 'x',
+            'specUnit': 'y',
+            'freqColInd': 0
+        }
+        read_opts.update(options)
         # Attempt to read passed handle
         try:
             df = pd.read_csv(
                 file,
-                sep=self.delim_map[options["delimChoice"]],
+                sep=self.delim_map[read_opts["delimChoice"]],
                 header=0,
-                skiprows=options['skipCount'],
-                comment=options['commentChar']
+                skiprows=read_opts['skipCount'],
+                comment=read_opts['commentChar']
             )
         except Exception as e:
             raise IOError("Reading {} failed:\n".format(file) + str(e))
@@ -61,9 +69,9 @@ class DataSource(object):
         self.traces.append(Spectrum(
             df,
             spec_id,
-            specunit=options['specUnit'],
-            frequnit=options['freqUnit'],
-            freqcol=options["freqColInd"],
+            specunit=read_opts['specUnit'],
+            frequnit=read_opts['freqUnit'],
+            freqcol=read_opts["freqColInd"],
             name=name
         ))
         return spec_id
