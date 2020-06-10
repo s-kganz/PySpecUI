@@ -12,6 +12,7 @@ import time
 import os
 import asyncio
 from asyncio import get_event_loop
+from pubsub import pub
 
 # OTHER MODULES
 from peaks.data.ds import DataSource
@@ -97,9 +98,8 @@ class DataTab(SubPanel):
         self.sizer = wx.BoxSizer(wx.VERTICAL)
 
         # Create the root nodes in the tree
-        self.tree = DragAndDropTree(
+        self.tree = wx.TreeCtrl(
             self.panel,
-            self.datasrc,
             style=wx.TR_DEFAULT_STYLE
         )
         root = self.tree.AddRoot("Project")
@@ -162,13 +162,11 @@ class DataTab(SubPanel):
         trace = self.tree.GetItemData(trace_item)
         if trace.is_plotted:
             # Remove the item from the plot
-            wx.GetTopLevelParent(self.panel).RemoveTraceFromPlot(trace.id)
-            trace.is_plotted = False
+            pub.sendMessage('Plotting.RemoveTrace', t_id=trace.id)
             self.tree.SetItemBold(trace_item, bold=False)
         else:
             # Plot it and make it boldface
-            wx.GetTopLevelParent(self.panel).AddTraceToPlot(trace.id)
-            trace.is_plotted = True
+            pub.sendMessage('Plotting.AddTrace', t_id=trace.id)
             self.tree.SetItemBold(trace_item, bold=True)
 
     # Event handlers
@@ -288,9 +286,13 @@ class TextPanel(SubPanel):
 
 class PlotRegion(SubPanel):
     def __init__(self, parent, datasrc):
+        # List of trace ID's that have already been plotted
         self.plotted_traces = []
         self.is_blank = True
         super(PlotRegion, self).__init__(parent, datasrc)
+        pub.subscribe(self.AddTraceToPlot, 'Plotting.AddTrace')
+        pub.subscribe(self.RemoveTraceFromPlot, 'Plotting.RemoveTrace')
+        pub.subscribe(self.UpdateTraces, 'Replot')
 
     def InitUI(self):
         self.plot_data = TextPanel(self.panel,
@@ -323,20 +325,24 @@ class PlotRegion(SubPanel):
 
         self.PlotMany(to_plot)
 
-    def AddTraceToPlot(self, trace):
+    def AddTraceToPlot(self, t_id):
         '''
         Add a single trace to the plot
         '''
-        self.PlotTrace(self.datasrc.GetTraceByID(trace))
-        self.plotted_traces.append(trace)
+        self.PlotTrace(self.datasrc.GetTraceByID(t_id))
+        self.plotted_traces.append(t_id)
 
-    def RemoveTraceFromPlot(self, trace):
+    def RemoveTraceFromPlot(self, t_id):
         '''
-        Remove a single trace from the plot
+        Remove a single trace from the plot. Remove the id from the internal
+        list of plotted traces and set internal trace is_plotted property.
         '''
         i = 0
+        t_obj = self.datasrc.GetTraceByID(t_id)
+        if not t_obj: return
+        t_obj.is_plotted = False
         while i < len(self.plotted_traces):
-            if self.plotted_traces[i] == trace:
+            if self.plotted_traces[i] == t_id:
                 self.plotted_traces.pop(i)
                 break
             i += 1
@@ -359,24 +365,25 @@ class PlotRegion(SubPanel):
             for id in self.plotted_traces:
                 # Get the trace from the data manager
                 spec = self.datasrc.GetTraceByID(id)
-                assert(spec)  # Make sure trace is not null
+                if not spec: continue # Make sure the spectrum isn't null
                 to_plot.append(spec)
             self.PlotMany(to_plot)
         else:
-            self.plot_panel.clear()  # This call forces the plot to update visually
+            self.plot_panel.clear() # This call forces the plot to update visually
             self.plot_panel.unzoom_all()
 
-    def PlotTrace(self, t, **kwargs):
+    def PlotTrace(self, t_obj, **kwargs):
         '''
         Plot a trace object. Used internally to standardize plotting style.
         '''
         if self.is_blank:
-            self.plot_panel.plot(t.getx(), t.gety(),
-                                 label=t.label(), show_legend=True, **kwargs)
+            self.plot_panel.plot(t_obj.getx(), t_obj.gety(),
+                                 label=t_obj.label(), show_legend=True, **kwargs)
+            t_obj.is_plotted = True
             self.is_blank = False
         else:
-            self.plot_panel.oplot(t.getx(), t.gety(),
-                                  label=t.label(), show_legend=True, **kwargs)
+            self.plot_panel.oplot(t_obj.getx(), t_obj.gety(),
+                                  label=t_obj.label(), show_legend=True, **kwargs)
 
     def PlotMany(self, traces, **kwargs):
         '''
@@ -427,7 +434,7 @@ class Layout(wx.Frame):
         self.Bind(wx.EVT_MENU, lambda x: StartCoroutine(
             self.SlowFunc(x), self), statItem)
 
-        # Fitting submeni
+        # Fitting submenu
         fitMenu = wx.Menu()
         gaussItem = fitMenu.Append(
             wx.ID_ANY, 'Gaussian...', 'Fit Gaussian peaks to a spectrum')
@@ -499,24 +506,6 @@ class Layout(wx.Frame):
             if traceInd >= 0:
                 # Add the new trace to the tab panel
                 self.tab_pane.data_tab.AddTrace(traceInd, type='spec')
-
-    def AddTraceToPlot(self, trace):
-        '''
-        Pull the given trace from the data manager and add it to the plot
-        '''
-        self.plt_pane.AddTraceToPlot(trace)
-
-    def RemoveTraceFromPlot(self, trace):
-        '''
-        Remove the given traces from the plot window.
-        '''
-        self.plt_pane.RemoveTraceFromPlot(trace)
-
-    def UpdatePlotTraces(self, traces):
-        '''
-        Replot the given traces
-        '''
-        self.plt_pane.UpdatePlotTraces(traces)
 
     def OnFitGauss(self, event):
         '''

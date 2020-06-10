@@ -5,27 +5,15 @@ Mixins and classes derived from stock wxpython controls
 import os
 
 import wx
-from wx.lib.mixins.treemixin import DragAndDrop
 from peaks.gui.popups import Menu_TreeCtrlTrace
-
-class DragAndDropTree(wx.TreeCtrl, DragAndDrop):
-    '''
-    Mixin class to enable drag and drop with the stock TreeCtrl.
-    '''
-    def __init__(self, parent, datasrc, style=wx.TR_DEFAULT_STYLE):
-        self.datasrc = datasrc
-        super(DragAndDropTree, self).__init__(parent, style=style)
-
-    def OnDrop(self):
-        '''
-        Dropping one item on top of another is not meaningful, so just return.
-        '''
-        return
 
 class DirTreeCtrl(wx.TreeCtrl):
     '''
     A window showing files/folder in the current working directory. Implementation comes from:
-    https://python-forum.io/Thread-Use-custom-root-in-wx-GenericDirCtrl
+    https://python-forum.io/Thread-Use-custom-root-in-wx-GenericDirCtrl.
+
+    Not currently used since recursing through many directories is slow, but might modify
+    it to only walk through folders when a folder is expanded.
     '''
     def __init__(self, parent, datasrc=None):
         super(DirTreeCtrl, self).__init__(parent)
