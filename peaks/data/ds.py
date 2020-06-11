@@ -1,5 +1,8 @@
 
 import pandas as pd
+from pubsub import pub
+import wx
+
 from os.path import basename
 from peaks.data.spec import Spectrum
 from peaks.data.models import ModelGauss
@@ -12,8 +15,7 @@ class DataSource(object):
     with UI elements.
     '''
 
-    def __init__(self, app=None):
-        self.app = app # Connection to the UI
+    def __init__(self):
         self.traces = []
         self.trace_counter = 0
         
@@ -22,6 +24,10 @@ class DataSource(object):
             "Space": ' ',
             "Comma": ','
         }
+
+        # Subscribe member functions
+        pub.subscribe(self.AddTraceFromCSV, 'Data.LoadCSV')
+        pub.subscribe(self.DeleteTrace, 'Data.DeleteTrace')
 
     def GetNextId(self):
         self.trace_counter += 1
@@ -59,9 +65,11 @@ class DataSource(object):
         # Figure out what the shape of the df is and create traces
         # TODO add support for reading many spectra from a csv at once
         if not df.shape[1] == 2:
-            raise IOError("Reading multi-column spectra is not supported")
+            wx.LogError("Reading multi-column spectra is not supported")
+            return
         if not df.ndim < 3:
-            raise IOError("Reading dataframe with more than 2 dimensions is not supported")
+            wx.LogError("Reading dataframe with more than 2 dimensions is not supported")
+            return
         
         # Pass remaining options to the spectrum constructor
         name = basename(file)
@@ -74,7 +82,9 @@ class DataSource(object):
             freqcol=read_opts["freqColInd"],
             name=name
         ))
-        return spec_id
+
+        # Pass the Spectrum to the data tab so it shows up in the UI
+        pub.sendMessage('UI.Tree.AddTrace', trace=self.traces[len(self.traces)-1], type='spec')
 
     def CreateGaussModel(self, spec_id, **kwargs):
         '''
@@ -98,12 +108,11 @@ class DataSource(object):
         '''
         Delete a trace from the manager by its ID
         '''
+        pub.sendMessage('Plotting.RemoveTrace', t_id=target_id)
         for i in range(len(self.traces)):
             if self.traces[i].id == target_id:
                 self.traces.pop(i)
-                return True
-        
-        return False
+                break
     
     def GetTraceByID(self, id):
         '''
