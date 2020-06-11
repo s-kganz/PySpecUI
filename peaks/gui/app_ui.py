@@ -17,10 +17,8 @@ from pubsub import pub
 # OTHER MODULES
 from peaks.data.ds import DataSource
 from peaks.data.spec import Spectrum
-from peaks.data.models import Model
 from peaks.data.data_helpers import Trace
-from peaks.gui.ui_helpers import *
-from peaks.gui.dialogs import *
+import peaks.gui.dialogs as dialogs
 from peaks.gui.popups import *
 
 
@@ -81,7 +79,10 @@ class CatalogTab(SubPanel):
         if not self.tree.GetTreeCtrl().GetChildrenCount(act_item) > 0:
             # Get the path associated with this tree item and load it
             abspath = self.tree.GetPath(act_item)
-            wx.GetTopLevelParent(self.panel).LoadData(None, path=abspath)
+            dialog_data = {
+                'path' : abspath
+            }
+            pub.sendMessage('Dialog.Run', D=dialogs.DialogLoad, data=dialog_data)
 
 
 class DataTab(SubPanel):
@@ -93,6 +94,8 @@ class DataTab(SubPanel):
     def __init__(self, parent, datasrc):
         self.btns = []
         super(DataTab, self).__init__(parent, datasrc)
+
+        pub.subscribe(self.AddTrace, 'UI.Tree.AddTrace')
 
     def InitUI(self):
         self.sizer = wx.BoxSizer(wx.VERTICAL)
@@ -122,17 +125,18 @@ class DataTab(SubPanel):
         self.tree.Bind(wx.EVT_TREE_ITEM_RIGHT_CLICK, self.OnRgtClick)
 
     # Tree modifiers
-    def AddTrace(self, trace_id, type='spec'):
+    def AddTrace(self, trace, type='spec'):
         '''
         Add a new trace to the tree
         '''
-        trace = self.datasrc.GetTraceByID(trace_id)
+        # Determine which heading the new item should go under
         hook = self.tree_spec if type == 'spec' else self.tree_mode
 
         try:
             assert(trace is not None)
         except AssertionError:
-            raise AssertionError("AddTrace received a null trace object!")
+            wx.LogError("AddTrace received a null trace object!")
+            return
 
         field = str(trace)
         newid = self.tree.AppendItem(hook, field, data=trace)
@@ -152,8 +156,7 @@ class DataTab(SubPanel):
             if dialog.ShowModal() == wx.ID_YES:
                 # Actually delete the trace from the plot, tree, and data manager
                 self.tree.Delete(trace_item)
-                wx.GetTopLevelParent(self.panel).RemoveTraceFromPlot(trace_data.id)
-                self.datasrc.DeleteTrace(trace_data.id)
+                pub.sendMessage('Data.DeleteTrace', target_id=trace_data.id)
 
     def TogglePlotted(self, trace_item):
         '''
@@ -165,6 +168,7 @@ class DataTab(SubPanel):
             pub.sendMessage('Plotting.RemoveTrace', t_id=trace.id)
             self.tree.SetItemBold(trace_item, bold=False)
         else:
+            trace.is_plotted = True
             # Plot it and make it boldface
             pub.sendMessage('Plotting.AddTrace', t_id=trace.id)
             self.tree.SetItemBold(trace_item, bold=True)
@@ -292,7 +296,7 @@ class PlotRegion(SubPanel):
         super(PlotRegion, self).__init__(parent, datasrc)
         pub.subscribe(self.AddTraceToPlot, 'Plotting.AddTrace')
         pub.subscribe(self.RemoveTraceFromPlot, 'Plotting.RemoveTrace')
-        pub.subscribe(self.UpdateTraces, 'Replot')
+        pub.subscribe(self.UpdateTraces, 'Plotting.Replot')
 
     def InitUI(self):
         self.plot_data = TextPanel(self.panel,
@@ -320,6 +324,7 @@ class PlotRegion(SubPanel):
         self.plotted_traces.clear()
         for t in self.datasrc.traces:
             if t.id in traces:
+                t.is_plotted = True
                 to_plot.append(t)
                 self.plotted_traces.append(t.id)
 
@@ -367,6 +372,7 @@ class PlotRegion(SubPanel):
                 spec = self.datasrc.GetTraceByID(id)
                 if not spec: continue # Make sure the spectrum isn't null
                 to_plot.append(spec)
+                spec.is_plotted = True
             self.PlotMany(to_plot)
         else:
             self.plot_panel.clear() # This call forces the plot to update visually
@@ -428,7 +434,8 @@ class Layout(wx.Frame):
         dataMenu = wx.Menu()
         # Load option
         loadItem = dataMenu.Append(wx.ID_OPEN, 'Load', 'Load data')
-        self.Bind(wx.EVT_MENU, self.LoadData, loadItem)
+        loadFunc = lambda x: pub.sendMessage('Dialog.Run', D=dialogs.DialogLoad, data=dict())
+        self.Bind(wx.EVT_MENU, loadFunc, loadItem)
         # Dummy option to test status bar
         statItem = dataMenu.Append(wx.ID_ANY, 'Compute', 'Think really hard')
         self.Bind(wx.EVT_MENU, lambda x: StartCoroutine(
@@ -469,44 +476,6 @@ class Layout(wx.Frame):
         '''
         self.Close()
 
-    def LoadData(self, e, **kwargs):
-        '''
-        Load a new data trace.
-        '''
-        # Create dialog box
-        with DialogLoad(self, **kwargs) as dialog:
-
-            if dialog.ShowModal() == wx.ID_CANCEL:
-                return     # the user changed their mind
-            # Proceed loading the file chosen by the user
-            path = dialog.fileCtrl.GetPath()
-            # Assemble remaining options into a dictionary
-            delimStr = dialog.delimCtrl.GetString(
-                dialog.delimCtrl.GetSelection())
-            commChar = dialog.commCtrl.GetValue()
-            if len(commChar) == 0:
-                commChar = None
-            options = {
-                'delimChoice': delimStr,
-                'header': dialog.headCtrl.GetValue(),
-                'commentChar': commChar,
-                'freqColInd': dialog.freqIndCtrl.GetValue(),
-                'skipCount': dialog.skipCtrl.GetValue(),
-                'freqUnit': dialog.freqUnitCtrl.GetValue(),
-                'specUnit': dialog.specUnitCtrl.GetValue()
-            }
-            traceInd = -1
-            try:
-                traceInd = self.datasrc.AddTraceFromCSV(path, options=options)
-            except IOError as e:
-                wx.LogError("Cannot open file {}.".format(path))
-                wx.LogError(str(e))
-                return
-
-            if traceInd >= 0:
-                # Add the new trace to the tab panel
-                self.tab_pane.data_tab.AddTrace(traceInd, type='spec')
-
     def OnFitGauss(self, event):
         '''
         Create a dialog for fitting Gaussian peaks to
@@ -523,7 +492,7 @@ class Layout(wx.Frame):
                 dialog.ShowModal()
                 return
 
-        with DialogGaussModel(self, names) as dialog:
+        with dialogs.DialogGaussModel(self, names) as dialog:
             if dialog.ShowModal() == wx.ID_CANCEL:
                 # they don't wanna fit after all :(
                 return
