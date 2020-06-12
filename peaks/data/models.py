@@ -131,7 +131,16 @@ class ModelGauss(Model, Trace):
         Returns a flat array of approximate peak parameters.
         '''
         sig, xax = self.spectrum.gety(), self.spectrum.getx()
-        assert(len(sig) == len(xax))
+        try:
+            assert(len(sig) == len(xax))
+        except AssertionError as e:
+            pub.sendMessage(
+                'Logging.Error', 
+                caller='ModelGauss.ParamGuess', 
+                msg="Signal and frequency axes are not the same length."
+            )
+            return
+        
         # Calculate savgol parameters
         delta = abs(xax[1] - xax[0])
         if not winlen:
@@ -176,11 +185,18 @@ class ModelGauss(Model, Trace):
 
         # Raise an error if minimum number of peaks was not reached
         if len(accepted) // 3 < min_peaks:
-            raise RuntimeError("[ModelGauss.ParamGuess]: Minimum number of peaks not"
-                               "reached ({} vs. min of {})".format(len(accepted), min_peaks))
+            pub.sendMessage(
+                'Logging.Error', 
+                caller='ModelGauss.ParamGuess', 
+                msg="Minimum number of peaks not reached ({} vs. min of {})".format(len(accepted), min_peaks)
+            )
         # Raise an error if no peaks were found
         if len(accepted) == 0:
-            raise RuntimeError("[ModelGauss.ParamGuess]: No peaks found!")
+            pub.sendMessage(
+                'Logging.Error',
+                caller='ModelGauss.ParamGuess',
+                msg='No peaks found.'
+            )
 
         return accepted
 
@@ -205,8 +221,12 @@ class ModelGauss(Model, Trace):
         Extract a section of or extrapolate this model to a custom domain.
         '''
         if not self.params:
-            raise RuntimeError("The model's parameters must be set by a\
-                                .Fit() call before doing a prediction.")
+            pub.sendMessage(
+                'Logging.Error',
+                caller='ModelGauss.Predict',
+                msg="The model's parameters must be set by a .Fit() call before doing a prediction."
+            )
+            return
         ret = np.zeros(len(x))
 
         for i in range(0, len(self.params), 3):
@@ -228,7 +248,12 @@ class ModelGauss(Model, Trace):
         may be called many times by plotting functions.
         '''
         if self.trace is None:
-            raise ValueError("Model has not been fully fitted, cannot plot.")
+            pub.sendMessage(
+                'Logging.Error',
+                caller='ModelGauss.gety',
+                msg="Model has not been fully fitted, cannot plot."
+            )
+            return
 
         return self.trace
 
@@ -244,7 +269,7 @@ class ModelGauss(Model, Trace):
 def ExecModel(M, spec, params={}):
     m = M(spec, None) # pass a blank id for now, let the data manager set it
     if not m.Fit(m.ParamGuess(**params)):
-        print("Fitting failed")
+        return
 
     pub.sendMessage(
         'Data.AddModel',
