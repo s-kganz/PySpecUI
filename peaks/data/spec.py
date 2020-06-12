@@ -1,10 +1,11 @@
 '''
-Implementation of spectrum representation.
+Implementation of data representation.
 '''
-
+# GENERAL MODULES
 import pandas as pd
 from os.path import basename
 
+# NAMESPACE MODULES
 from peaks.data.data_helpers import Trace
 
 __all__ = ["Spectrum"]

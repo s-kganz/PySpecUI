@@ -1,6 +1,8 @@
 '''
 Derived classes of wx.Menu for context popup menus
 '''
+
+# WX MODULES
 import wx
 
 class Menu_TreeCtrlTrace(wx.Menu):
@@ -27,5 +29,4 @@ class Menu_TreeCtrlTrace(wx.Menu):
     
     def OnPlot(self, event):
         self.parent.TogglePlotted(self.item)
-
-
+        

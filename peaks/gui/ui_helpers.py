@@ -2,9 +2,13 @@
 Mixins and classes derived from stock wxpython controls
 '''
 
+# GENERAL MODULES
 import os
 
+# WX MODULES
 import wx
+
+# NAMESPACE MODULES
 from peaks.gui.popups import Menu_TreeCtrlTrace
 
 class DirTreeCtrl(wx.TreeCtrl):
