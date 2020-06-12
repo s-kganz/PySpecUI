@@ -76,10 +76,17 @@ class DataSource(object):
         # Figure out what the shape of the df is and create traces
         # TODO add support for reading many spectra from a csv at once
         if not df.shape[1] == 2:
-            wx.LogError("Reading multi-column spectra is not supported")
+            pub.sendMessage(
+                'Logging.Error', 
+                caller='DataSource.AddTraceFromCSV', 
+                msg="Reading multi-column spectra is not supported")
             return
         if not df.ndim < 3:
-            wx.LogError("Reading dataframe with more than 2 dimensions is not supported")
+            pub.sendMessage(
+                'Logging.Error', 
+                caller='DataSource.AddTraceFromCSV', 
+                msg="Reading dataframe with more than 2 dimensions is not supported"
+            )
             return
         
         # Pass remaining options to the spectrum constructor

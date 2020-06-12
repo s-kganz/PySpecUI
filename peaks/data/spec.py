@@ -38,8 +38,6 @@ class Spectrum(Trace):
         self.name = name
         self.is_plotted = False
 
-        
-
     @staticmethod
     def FromDataframe(df, id=-1, specunit="", frequnit="",
                       name="", freqcol=0, speccol=1):
