@@ -147,7 +147,7 @@ class DataTab(SubPanel):
         try:
             assert(trace is not None)
         except AssertionError:
-            wx.LogError("AddTrace received a null trace object!")
+            pub.sendMessage('Logging.Error', caller='DataTab.AddTrace', msg="Received a null trace object.")
             return
 
         field = str(trace)
@@ -322,7 +322,7 @@ class PlotRegion(SubPanel):
         self.plot_data = TextPanel(self.panel,
                                    self.datasrc,
                                    text="Additional plot information goes here")
-        self.plot_panel = PlotPanel(self.panel)
+        self.plot_panel = PlotPanel(self.panel, messenger=self.SuppressStatus)
 
         vbox = wx.BoxSizer(wx.VERTICAL)
 
@@ -330,6 +330,12 @@ class PlotRegion(SubPanel):
         vbox.Add(self.plot_data.GetPanel(), 1, wx.EXPAND)
 
         self.panel.SetSizerAndFit(vbox)
+
+    def SuppressStatus(self, *args, **kwargs):
+        '''
+        Suppress PlotPanel messenger calls.
+        '''
+        return
 
     def AddTracesToPlot(self, traces):
         '''
@@ -433,6 +439,7 @@ class Layout(wx.Frame):
         self.InitUI()
         self.Centre()
         pub.subscribe(self.SetStatus, 'UI.SetStatus')
+        pub.subscribe(self.LogError, 'Logging.Error')
 
     def InitUI(self):
         '''
@@ -524,6 +531,16 @@ class Layout(wx.Frame):
         Set the statusbar text.
         '''
         self.status.SetStatusText(text)
+
+    def LogError(self, caller, msg):
+        '''
+        Raise an error dialog.
+
+        caller: The object that raised the error (as a string)
+        msg: error information
+        '''
+        s = '[{}]: {}'.format(caller, msg)
+        wx.LogError(s)
 
     async def SlowFunc(self, e):
         '''
