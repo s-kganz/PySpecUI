@@ -10,14 +10,14 @@ number of functions to fit, 2) making an initial guess
 at the function parameters, and 3) tuning the parameters
 to an optimal solution that is retained by the object.
 '''
-
+# GENERAL MODULES
 import numpy as np
 from scipy import signal
 from scipy.optimize import least_squares
+from pubsub import pub
 
+# NAMESPACE MODULES
 from peaks.data.data_helpers import Trace
-
-__all__ = ["ModelGauss"]
 
 def r_squared(a, b):
     '''
@@ -92,8 +92,8 @@ class ModelGauss(Model, Trace):
         # actually get called
         Model.__init__(self, spec)
         Trace.__init__(self)
-        self.id = id
         self.model_name = "Gaussian"
+        self.id = id
 
     @staticmethod
     def Func(x, a, mu, sigma):
@@ -120,7 +120,7 @@ class ModelGauss(Model, Trace):
 
         ret = np.zeros(len(x))
         for i in range(0, len(params), 3):
-            ret += ModelGauss.Func(x, params[i], params[i+1], params[i+2])
+            ret += self.Func(x, params[i], params[i+1], params[i+2])
 
         return ret
 
@@ -128,7 +128,7 @@ class ModelGauss(Model, Trace):
         '''
         Guess gaussian peak parameters from minima in the second derivative.
 
-        Returns a flat array of approximate peak parameters
+        Returns a flat array of approximate peak parameters.
         '''
         sig, xax = self.spectrum.gety(), self.spectrum.getx()
         assert(len(sig) == len(xax))
@@ -210,7 +210,7 @@ class ModelGauss(Model, Trace):
         ret = np.zeros(len(x))
 
         for i in range(0, len(self.params), 3):
-            ret += ModelGauss.Func(x, params[i], params[i+1], params[i+2])
+            ret += self.Func(x, params[i], params[i+1], params[i+2])
 
         return ret
     
@@ -240,3 +240,15 @@ class ModelGauss(Model, Trace):
 
     def __str__(self):
         return self.label()
+
+def ExecModel(M, spec, params={}):
+    m = M(spec, None) # pass a blank id for now, let the data manager set it
+    if not m.Fit(m.ParamGuess(**params)):
+        print("Fitting failed")
+
+    pub.sendMessage(
+        'Data.AddModel',
+        model=m
+    )
+
+pub.subscribe(ExecModel, 'Data.Model.Create')
