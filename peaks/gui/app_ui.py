@@ -1,20 +1,21 @@
 '''
-This file includes implementation of derived classes for building
-the application interface.
+Implementation of derived classes for building the application interface
+and the application itself.
 '''
-# WX MODULES
-import wx
-from wxasync import AsyncBind, WxAsyncApp, StartCoroutine
-from wxmplot import PlotPanel
 
-# OTHER PYTHON MODULES
+# GENERAL MODULES
 import time
 import os
 import asyncio
 from asyncio import get_event_loop
 from pubsub import pub
 
-# OTHER MODULES
+# WX MODULES
+import wx
+from wxasync import AsyncBind, WxAsyncApp, StartCoroutine
+from wxmplot import PlotPanel
+
+# NAMESPACE MODULES
 from peaks.data.ds import DataSource
 from peaks.data.spec import Spectrum
 from peaks.data.data_helpers import Trace
@@ -45,7 +46,8 @@ class SubPanel():
         defined by derived classes.
         '''
         raise NotImplementedError(
-            "InitUI must be defined for all derived subpanels")
+            "InitUI must be defined for all derived subpanels"
+        )
 
     def GetPanel(self):
         '''
@@ -65,6 +67,9 @@ class CatalogTab(SubPanel):
         super(CatalogTab, self).__init__(parent, datasrc)
 
     def InitUI(self):
+        '''
+        Create widgets.
+        '''
         vsizer = wx.BoxSizer(wx.VERTICAL)
 
         # View for files in the current working directory
@@ -75,9 +80,13 @@ class CatalogTab(SubPanel):
         self.panel.SetSizer(vsizer)
 
     def OnDblClick(self, event):
+        '''
+        Event handler for double clicking on an item in the file
+        window.
+        '''
         act_item = event.GetItem()
         if not self.tree.GetTreeCtrl().GetChildrenCount(act_item) > 0:
-            # Get the path associated with this tree item and load it
+            # The item is a leaf, try and load it.
             abspath = self.tree.GetPath(act_item)
             dialog_data = {
                 'path' : abspath
@@ -98,6 +107,9 @@ class DataTab(SubPanel):
         pub.subscribe(self.AddTrace, 'UI.Tree.AddTrace')
 
     def InitUI(self):
+        '''
+        Create widgets.
+        '''
         self.sizer = wx.BoxSizer(wx.VERTICAL)
 
         # Create the root nodes in the tree
@@ -183,6 +195,7 @@ class DataTab(SubPanel):
         Nodes: toggles whether the node is expanded/collapsed
         '''
         item = event.GetItem()
+        # Determine if the doubleclicked object is plottable
         if issubclass(type(self.tree.GetItemData(item)), Trace):
             self.TogglePlotted(item)
         else:
@@ -204,7 +217,7 @@ class DataTab(SubPanel):
             # Determine if the current selection is a spectrum
             sel_item = self.tree.GetSelection()
             sel_data = self.tree.GetItemData(sel_item)
-            if type(sel_data) == Spectrum:
+            if issubclass(type(sel_data), Trace):
                 self.RemoveTrace(sel_item)
 
         event.Skip()  # Pass it up the chain
@@ -231,8 +244,7 @@ class TabPanel(SubPanel):
     Class implementing a notebook-style collection of panels.
     '''
 
-    def __init__(self, parent, datasrc, ntabs=4):
-        self.ntabs = ntabs
+    def __init__(self, parent, datasrc):
         self.data_tab_idx = 0
         super(TabPanel, self).__init__(parent, datasrc)
 
@@ -289,6 +301,11 @@ class TextPanel(SubPanel):
 
 
 class PlotRegion(SubPanel):
+    '''
+    Class implementing the plot window. Utilizes a wxmplot
+    PlotPanel for plotting and includes member functions for efficient
+    plotting/replotting of spectra.
+    '''
     def __init__(self, parent, datasrc):
         # List of trace ID's that have already been plotted
         self.plotted_traces = []
@@ -299,11 +316,13 @@ class PlotRegion(SubPanel):
         pub.subscribe(self.UpdateTraces, 'Plotting.Replot')
 
     def InitUI(self):
+        '''
+        Create widgets.
+        '''
         self.plot_data = TextPanel(self.panel,
                                    self.datasrc,
                                    text="Additional plot information goes here")
-        self.plot_panel = PlotPanel(self.panel,
-                                    messenger=self.CoordMessage)
+        self.plot_panel = PlotPanel(self.panel)
 
         vbox = wx.BoxSizer(wx.VERTICAL)
 
@@ -311,10 +330,6 @@ class PlotRegion(SubPanel):
         vbox.Add(self.plot_data.GetPanel(), 1, wx.EXPAND)
 
         self.panel.SetSizerAndFit(vbox)
-
-    def CoordMessage(self, s, **kwargs):
-        app = wx.GetApp()
-        app.layout.status.SetStatusText(s)
 
     def AddTracesToPlot(self, traces):
         '''
@@ -409,14 +424,20 @@ class PlotRegion(SubPanel):
 
 
 class Layout(wx.Frame):
-
+    '''
+    Main frame of the application.
+    '''
     def __init__(self, parent, title, datasrc=None):
         super(Layout, self).__init__(parent, title=title, size=(1000, 600))
         self.datasrc = datasrc
         self.InitUI()
         self.Centre()
+        pub.subscribe(self.SetStatus, 'UI.SetStatus')
 
     def InitUI(self):
+        '''
+        Create widgets.
+        '''
         # Build status bar
         self.status = self.CreateStatusBar()
         self.status.SetStatusText('Ready')
@@ -458,7 +479,7 @@ class Layout(wx.Frame):
         splitter = wx.SplitterWindow(self, style=wx.SP_LIVE_UPDATE)
 
         self.plt_pane = PlotRegion(splitter, self.datasrc)
-        self.tab_pane = TabPanel(splitter, self.datasrc, ntabs=3)
+        self.tab_pane = TabPanel(splitter, self.datasrc)
 
         splitter.SplitVertically(
             self.plt_pane.GetPanel(), self.tab_pane.GetPanel())
@@ -492,33 +513,17 @@ class Layout(wx.Frame):
                 dialog.ShowModal()
                 return
 
-        with dialogs.DialogGaussModel(self, names) as dialog:
-            if dialog.ShowModal() == wx.ID_CANCEL:
-                # they don't wanna fit after all :(
-                return
-            else:
-                # Get the spectrum to fit on
-                spec_sel = dialog.ctrl_spec_name.GetSelection()
-                spec_id = names[dialog.ctrl_spec_name.GetString(spec_sel)]
+        data = {
+            'names': names,
+            'datasrc': self.datasrc
+        }
+        pub.sendMessage('Dialog.Run', D=dialogs.DialogGaussModel, data=data)
 
-                # Additional arguments for the fitting procedure
-                kwargs = {
-                    'peak_range': (
-                        dialog.ctrl_min_peaks.GetValue(),
-                        dialog.ctrl_max_peaks.GetValue()
-                    ),
-                    'polyorder': dialog.ctrl_poly_order.GetValue()
-                }
-                # Make the model
-                try:
-                    ret = self.datasrc.CreateGaussModel(spec_id, **kwargs)
-                except Exception as e:
-                    wx.LogError(str(e))
-                    return
-
-                # Add the new model to the data tab
-                self.tab_pane.data_tab.AddTrace(ret, type='model')
-                return ret
+    def SetStatus(self, text):
+        '''
+        Set the statusbar text.
+        '''
+        self.status.SetStatusText(text)
 
     async def SlowFunc(self, e):
         '''
@@ -530,17 +535,27 @@ class Layout(wx.Frame):
 
 
 class App(WxAsyncApp):
+    '''
+    Overall application class. Inherits WxAsyncApp
+    to allow for asynchronous execution.
+    '''
     def __init__(self, datasrc=None):
         self.datasrc = datasrc
         super(App, self).__init__()
 
     def OnInit(self):
+        '''
+        Simply build the layout and return.
+        '''
         self.layout = Layout(None, title='PyPeaks', datasrc=self.datasrc)
         self.layout.Show()
         return True
 
 
 def start_app():
+    '''
+    Main driver function.
+    '''
     ds = DataSource()
     app = App(datasrc=ds)
     loop = get_event_loop()

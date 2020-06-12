@@ -1,17 +1,27 @@
 '''
 Custom dialogs and dialog execution interface
 '''
+# GENERAL MODULES
 import os
 from pubsub import pub
-
 import wx
 from wx.lib import sized_controls
 from wx.lib.intctrl import IntCtrl
+
+# NAMESPACE MODULES
+import peaks.data.models as models
 
 class CustomDialog(sized_controls.SizedDialog):
     '''
     Informal interface for all dialogs in this file. Provides utils
     for creating controls and dialog execution.
+
+    All dialogs follow a similar pathway: 
+
+    - Build widgets
+    - Show modal to the user
+    - If OK, pass parameters entered by the user to the correct pubsub
+      subscriber
     '''
     def __init__(self, parent, title="Custom Dialog"):
         super(CustomDialog, self).__init__(parent, title=title)
@@ -73,7 +83,9 @@ class DialogLoad(CustomDialog):
         self.InitUI(opts['path'])
 
     def InitUI(self, path):
-
+        '''
+        Create widgets.
+        '''
         file_pane = sized_controls.SizedPanel(self.pane)
         file_pane.SetSizerType('horizontal')
         file_pane.SetSizerProps(halign='left')
@@ -140,7 +152,7 @@ class DialogLoad(CustomDialog):
 
     def Exec(self):
         '''
-        Execute the load tool
+        Execute the load dialog.
         '''
         # Package all the parameters into a dictionary and
         # send to the data manager.
@@ -173,23 +185,27 @@ class DialogGaussModel(CustomDialog):
         super(DialogGaussModel, self).__init__(parent, title='Fit Gaussian peaks...')
         
         opts = {
-            'traces' : [],
-            'datasrc' : None
+            'names' : [],
+            'datasrc': None
         }
         opts.update(data)
 
+        self.names = opts['names']
         self.datasrc = opts['datasrc']
         
-        self.InitUI(opts['traces'])
+        self.InitUI()
 
-    def InitUI(self, traces):
+    def InitUI(self):
+        '''
+        Create widgets.
+        '''
         spec_pane = sized_controls.SizedPanel(self.pane)
         spec_pane.SetSizerType('horizontal')
         spec_pane.SetSizerProps(halign='left')
 
         # Top section: pick the spectrum
         wx.StaticText(spec_pane, label="Spectrum to fit:")
-        trace_names = list(traces.keys())
+        trace_names = list(self.names.keys())
         self.ctrl_spec_name = wx.Choice(
             spec_pane, 
             choices=trace_names)
@@ -229,15 +245,31 @@ class DialogGaussModel(CustomDialog):
         '''
         Execute Gaussian fitting.
         '''
-        print("Exec!")
-        pass
+        spec_sel = self.ctrl_spec_name.GetSelection()
+        spec_id = self.names[self.ctrl_spec_name.GetString(spec_sel)]
+
+        # Additional arguments for the fitting procedure
+        params = {
+            'peak_range': (
+                self.ctrl_min_peaks.GetValue(),
+                self.ctrl_max_peaks.GetValue()
+            ),
+            'polyorder': self.ctrl_poly_order.GetValue()
+        }
+        
+        pub.sendMessage(
+            "Data.Model.Create", 
+            M=models.ModelGauss,
+            spec=self.datasrc.GetTraceByID(spec_id), 
+            params=params
+        )
 
 def ExecDialog(D, data=None):
     '''
     Instantiate the passed dialog type, show it to the user, and execute
     if the user fills out the dialog.
 
-    D must be a type. data is optional - 
+    D must be a type. data is optional.
     '''
     with D(None, data) as dialog:
         if dialog.ShowModal() == wx.ID_CANCEL:

@@ -1,13 +1,19 @@
+'''
+Implementation of data management class. Holds all traces in memory
+and implements IO functions.
+'''
 
+# GENERAL MODULES
 import pandas as pd
 from pubsub import pub
+from os.path import basename
+
+# WX MODULES
 import wx
 
-from os.path import basename
+# NAMESPACE MODULES
 from peaks.data.spec import Spectrum
-from peaks.data.models import ModelGauss
-
-__all__ = ["DataSource"]
+import peaks.data.models as models
 
 class DataSource(object):
     '''
@@ -27,9 +33,14 @@ class DataSource(object):
 
         # Subscribe member functions
         pub.subscribe(self.AddTraceFromCSV, 'Data.LoadCSV')
+        pub.subscribe(self.AddModel, 'Data.AddModel')
         pub.subscribe(self.DeleteTrace, 'Data.DeleteTrace')
 
     def GetNextId(self):
+        '''
+        Used internally to generate unique IDs as traces
+        are added.
+        '''
         self.trace_counter += 1
         return self.trace_counter
 
@@ -84,25 +95,24 @@ class DataSource(object):
         ))
 
         # Pass the Spectrum to the data tab so it shows up in the UI
-        pub.sendMessage('UI.Tree.AddTrace', trace=self.traces[len(self.traces)-1], type='spec')
+        pub.sendMessage(
+            'UI.Tree.AddTrace', 
+            trace=self.traces[len(self.traces)-1], 
+            type='spec'
+        )
 
-    def CreateGaussModel(self, spec_id, **kwargs):
+    def AddModel(self, model):
         '''
-        Create a Gaussian model of the passed spectrum object.
-
-        Returns the model's trace id on a successful fit. Otherwise
-        returns None.
+        Add a newly created model to the internal manager and
+        the data tab.
         '''
-        # Construct the model object and fit it
-        mod_id = self.GetNextId()
-        mg = ModelGauss(self.GetTraceByID(spec_id), mod_id)
-        
-        if not mg.Fit(mg.ParamGuess(**kwargs)):
-            return None
-        
-        # On a successful fit, add the new model to memory
-        self.traces.append(mg)
-        return mod_id
+        model.id = self.GetNextId()
+        self.traces.append(model)
+        pub.sendMessage(
+            'UI.Tree.AddTrace', 
+            trace=self.traces[len(self.traces)-1], 
+            type='model'
+        )
 
     def DeleteTrace(self, target_id):
         '''
