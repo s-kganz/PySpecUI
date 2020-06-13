@@ -19,8 +19,8 @@ from wxmplot import PlotPanel
 from peaks.data.ds import DataSource
 from peaks.data.spec import Spectrum
 from peaks.data.data_helpers import Trace
-import peaks.gui.dialogs as dialogs
-from peaks.gui.popups import *
+from .dialogs import *
+from .popups import *
 
 
 class SubPanel():
@@ -89,9 +89,10 @@ class CatalogTab(SubPanel):
             # The item is a leaf, try and load it.
             abspath = self.tree.GetPath(act_item)
             dialog_data = {
-                'path' : abspath
+                'path': abspath
             }
-            pub.sendMessage('Dialog.Run', D=dialogs.DialogLoad, data=dialog_data)
+            pub.sendMessage('Dialog.Run', D=DialogLoad,
+                            data=dialog_data)
 
 
 class DataTab(SubPanel):
@@ -147,7 +148,8 @@ class DataTab(SubPanel):
         try:
             assert(trace is not None)
         except AssertionError:
-            pub.sendMessage('Logging.Error', caller='DataTab.AddTrace', msg="Received a null trace object.")
+            pub.sendMessage('Logging.Error', caller='DataTab.AddTrace',
+                            msg="Received a null trace object.")
             return
 
         field = str(trace)
@@ -306,15 +308,23 @@ class PlotRegion(SubPanel):
     PlotPanel for plotting and includes member functions for efficient
     plotting/replotting of spectra.
     '''
+
     def __init__(self, parent, datasrc):
         # List of trace ID's that have already been plotted
+        app = wx.GetApp()
         self.plotted_traces = []
         self.is_blank = True
         super(PlotRegion, self).__init__(parent, datasrc)
         pub.subscribe(self.AddTraceToPlot, 'Plotting.AddTrace')
         pub.subscribe(self.RemoveTraceFromPlot, 'Plotting.RemoveTrace')
         pub.subscribe(self.UpdateTraces, 'Plotting.Replot')
-
+        
+    def _SuppressStatus(self, *args, **kwargs):
+            '''
+            Suppress PlotPanel messenger calls.
+            '''
+            return
+    
     def InitUI(self):
         '''
         Create widgets.
@@ -322,7 +332,7 @@ class PlotRegion(SubPanel):
         self.plot_data = TextPanel(self.panel,
                                    self.datasrc,
                                    text="Additional plot information goes here")
-        self.plot_panel = PlotPanel(self.panel, messenger=self.SuppressStatus)
+        self.plot_panel = PlotPanel(self.panel, messenger=self._SuppressStatus)
 
         vbox = wx.BoxSizer(wx.VERTICAL)
 
@@ -330,12 +340,6 @@ class PlotRegion(SubPanel):
         vbox.Add(self.plot_data.GetPanel(), 1, wx.EXPAND)
 
         self.panel.SetSizerAndFit(vbox)
-
-    def SuppressStatus(self, *args, **kwargs):
-        '''
-        Suppress PlotPanel messenger calls.
-        '''
-        return
 
     def AddTracesToPlot(self, traces):
         '''
@@ -355,25 +359,41 @@ class PlotRegion(SubPanel):
         '''
         Add a single trace to the plot
         '''
-        self.PlotTrace(self.datasrc.GetTraceByID(t_id))
-        self.plotted_traces.append(t_id)
+        def run(t_id):
+            pub.sendMessage('UI.SetStatus', text='Adding trace...')
+            self.PlotTrace(self.datasrc.GetTraceByID(t_id))
+            self.plotted_traces.append(t_id)
+            pub.sendMessage('UI.SetStatus', text='Done.')
+
+        asyncio.get_running_loop().run_in_executor(
+            None, lambda: run(t_id)
+        )
 
     def RemoveTraceFromPlot(self, t_id):
         '''
         Remove a single trace from the plot. Remove the id from the internal
-        list of plotted traces and set internal trace is_plotted property.
+        list of plotted traces and set internal trace.is_plotted property
+        to False.
         '''
-        i = 0
-        t_obj = self.datasrc.GetTraceByID(t_id)
-        if not t_obj: return
-        t_obj.is_plotted = False
-        while i < len(self.plotted_traces):
-            if self.plotted_traces[i] == t_id:
-                self.plotted_traces.pop(i)
-                break
-            i += 1
-        # Clear and re-draw the plot
-        self.Replot()
+        def run(t_id):
+            pub.sendMessage('UI.SetStatus', text='Removing trace...')
+            i = 0
+            t_obj = self.datasrc.GetTraceByID(t_id)
+            if not t_obj:
+                return
+            t_obj.is_plotted = False
+            while i < len(self.plotted_traces):
+                if self.plotted_traces[i] == t_id:
+                    self.plotted_traces.pop(i)
+                    break
+                i += 1
+            # Clear and re-draw the plot
+            self.Replot()
+            pub.sendMessage('UI.SetStatus', text='Done.')
+
+        asyncio.get_running_loop().run_in_executor(
+            None, lambda: run(t_id)
+        )
 
     def UpdateTraces(self, traces):
         # stub
@@ -391,12 +411,13 @@ class PlotRegion(SubPanel):
             for id in self.plotted_traces:
                 # Get the trace from the data manager
                 spec = self.datasrc.GetTraceByID(id)
-                if not spec: continue # Make sure the spectrum isn't null
+                if not spec:
+                    continue  # Make sure the spectrum isn't null
                 to_plot.append(spec)
                 spec.is_plotted = True
             self.PlotMany(to_plot)
         else:
-            self.plot_panel.clear() # This call forces the plot to update visually
+            self.plot_panel.clear()  # This call forces the plot to update visually
             self.plot_panel.unzoom_all()
 
     def PlotTrace(self, t_obj, **kwargs):
@@ -433,6 +454,7 @@ class Layout(wx.Frame):
     '''
     Main frame of the application.
     '''
+
     def __init__(self, parent, title, datasrc=None):
         super(Layout, self).__init__(parent, title=title, size=(1000, 600))
         self.datasrc = datasrc
@@ -462,7 +484,8 @@ class Layout(wx.Frame):
         dataMenu = wx.Menu()
         # Load option
         loadItem = dataMenu.Append(wx.ID_OPEN, 'Load', 'Load data')
-        loadFunc = lambda x: pub.sendMessage('Dialog.Run', D=dialogs.DialogLoad, data=dict())
+        def loadFunc(x): return pub.sendMessage(
+            'Dialog.Run', D=DialogLoad, data=dict())
         self.Bind(wx.EVT_MENU, loadFunc, loadItem)
         # Dummy option to test status bar
         statItem = dataMenu.Append(wx.ID_ANY, 'Compute', 'Think really hard')
@@ -524,7 +547,7 @@ class Layout(wx.Frame):
             'names': names,
             'datasrc': self.datasrc
         }
-        pub.sendMessage('Dialog.Run', D=dialogs.DialogGaussModel, data=data)
+        pub.sendMessage('Dialog.Run', D=DialogGaussModel, data=data)
 
     def SetStatus(self, text):
         '''
@@ -556,6 +579,7 @@ class App(WxAsyncApp):
     Overall application class. Inherits WxAsyncApp
     to allow for asynchronous execution.
     '''
+
     def __init__(self, datasrc=None):
         self.datasrc = datasrc
         super(App, self).__init__()
@@ -575,5 +599,6 @@ def start_app():
     '''
     ds = DataSource()
     app = App(datasrc=ds)
+    pub.exportTopicTreeSpec('test')
     loop = get_event_loop()
     loop.run_until_complete(app.MainLoop())

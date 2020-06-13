@@ -15,6 +15,9 @@ import numpy as np
 from scipy import signal
 from scipy.optimize import least_squares
 from pubsub import pub
+import asyncio
+
+__all__ = ['ModelGauss']
 
 # NAMESPACE MODULES
 from peaks.data.data_helpers import Trace
@@ -45,13 +48,6 @@ class Model(object):
 
         self.trace = None # The prediction this model makes on the frequency domain
                           # of the spectrum.
-
-    @staticmethod
-    def Func():
-        '''
-        The function this model uses to fit spectra.
-        '''
-        raise NotImplementedError("Model function must be defined!")
 
     def Fit(self, params):
         '''
@@ -96,7 +92,7 @@ class ModelGauss(Model, Trace):
         self.id = id
 
     @staticmethod
-    def Func(x, a, mu, sigma):
+    def Gauss(x, a, mu, sigma):
         '''
         Create a Gaussian distribution centered around mu over the domain
         given by x.
@@ -120,7 +116,7 @@ class ModelGauss(Model, Trace):
 
         ret = np.zeros(len(x))
         for i in range(0, len(params), 3):
-            ret += self.Func(x, params[i], params[i+1], params[i+2])
+            ret += self.Gauss(x, params[i], params[i+1], params[i+2])
 
         return ret
 
@@ -166,7 +162,6 @@ class ModelGauss(Model, Trace):
         candidates.sort(key=lambda x: (x[2], x[0]), reverse=True)
         accepted = []
 
-        
         for i in range(len(candidates)):
             # Stop if max peaks reached
             if len(accepted) // 3 == max_peaks:
@@ -230,7 +225,7 @@ class ModelGauss(Model, Trace):
         ret = np.zeros(len(x))
 
         for i in range(0, len(self.params), 3):
-            ret += self.Func(x, params[i], params[i+1], params[i+2])
+            ret += self.Gauss(x, params[i], params[i+1], params[i+2])
 
         return ret
     
@@ -267,13 +262,22 @@ class ModelGauss(Model, Trace):
         return self.label()
 
 def ExecModel(M, spec, params={}):
-    m = M(spec, None) # pass a blank id for now, let the data manager set it
-    if not m.Fit(m.ParamGuess(**params)):
-        return
+    def run(M, spec, params):
+        m = M(spec, None) # pass a blank id for now, let the data manager set it
+        pub.sendMessage('UI.SetStatus', text='Fitting model {}...'.format(m.model_name))
 
-    pub.sendMessage(
-        'Data.AddModel',
-        model=m
+        if not m.Fit(m.ParamGuess(**params)):
+            return
+
+        pub.sendMessage(
+            'Data.AddModel',
+            model=m
+        )
+        pub.sendMessage('UI.SetStatus', text='Done.')
+    
+    asyncio.get_running_loop().run_in_executor(
+        None,
+        lambda: run(M, spec, params)
     )
 
 pub.subscribe(ExecModel, 'Data.Model.Create')
