@@ -11,6 +11,8 @@ from wx.lib.intctrl import IntCtrl
 # NAMESPACE MODULES
 import peaks.data.models as models
 
+__all__ = ["DialogGaussModel", "DialogLoad"]
+
 class CustomDialog(sized_controls.SizedDialog):
     '''
     Informal interface for all dialogs in this file. Provides utils

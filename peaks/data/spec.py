@@ -6,9 +6,9 @@ import pandas as pd
 from os.path import basename
 
 # NAMESPACE MODULES
-from peaks.data.data_helpers import Trace
+from .data_helpers import Trace
 
-__all__ = ["Spectrum"]
+__all__ = ["Spectrum", "Trace"]
 
 class Spectrum(Trace):
     '''
