@@ -12,8 +12,8 @@ from os.path import basename
 import wx
 
 # NAMESPACE MODULES
-from peaks.data.spec import Spectrum
-import peaks.data.models as models
+from .spec import Spectrum
+from .models import *
 
 class DataSource(object):
     '''
@@ -53,9 +53,9 @@ class DataSource(object):
         '''
         # Default read parameters
         read_opts = {
-            'sep': 'Comma',
-            'skiprows' : 0,
-            'comment': '#',
+            'delimChoice': 'Comma',
+            'skipCount' : 0,
+            'commentChar': '#',
             'freqUnit': 'x',
             'specUnit': 'y',
             'freqColInd': 0
@@ -107,19 +107,22 @@ class DataSource(object):
             trace=self.traces[len(self.traces)-1], 
             type='spec'
         )
+        return spec_id
 
     def AddModel(self, model):
         '''
         Add a newly created model to the internal manager and
         the data tab.
         '''
-        model.id = self.GetNextId()
+        new_id = self.GetNextId()
+        model.id = new_id
         self.traces.append(model)
         pub.sendMessage(
             'UI.Tree.AddTrace', 
             trace=self.traces[len(self.traces)-1], 
             type='model'
         )
+        return new_id
 
     def DeleteTrace(self, target_id):
         '''
@@ -140,4 +143,8 @@ class DataSource(object):
             if trace.id == id:
                 return trace
         
-        return None
+        pub.sendMessage(
+            'Logging.Error',
+            caller='DataSource.GetTraceByID',
+            msg="No trace with ID {}".format(id)
+        )
