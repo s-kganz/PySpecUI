@@ -375,30 +375,37 @@ class PlotRegion(SubPanel):
         list of plotted traces and set internal trace.is_plotted property
         to False.
         '''
-        def run(t_id):
+        def start_replot():
             pub.sendMessage('UI.SetStatus', text='Removing trace...')
-            i = 0
-            t_obj = self.datasrc.GetTraceByID(t_id)
-            if not t_obj:
-                return
-            t_obj.is_plotted = False
-            while i < len(self.plotted_traces):
-                if self.plotted_traces[i] == t_id:
-                    self.plotted_traces.pop(i)
-                    break
-                i += 1
             # Clear and re-draw the plot
             self.Replot()
             pub.sendMessage('UI.SetStatus', text='Done.')
 
+        # The blocking segment of this routine is the replotting,
+        # so management of the internal IDs can happen before the thread
+        # starts to prevent out of turn trace IO operations. 
+        t_obj = self.datasrc.GetTraceByID(t_id)
+        if t_obj:
+            t_obj.is_plotted = False
+
+        try:
+            self.plotted_traces.remove(t_id)
+        except ValueError:
+            pub.sendMessage(
+                'Logging.Error', 
+                caller='PlotRegion.RemoveTraceFromPlot', 
+                msg="Plot window does not have trace with id {}.".format(t_id))
+        
         asyncio.get_running_loop().run_in_executor(
-            None, lambda: run(t_id)
+            None, lambda: start_replot()
         )
 
     def UpdateTraces(self, traces):
-        # stub
-        # Replot the passed traces if they are present
-        print("Updating traces {}".format(traces))
+        '''
+        Updating a single trace without re-rendering the entire
+        plot window is not currently supported.
+        '''
+        raise NotImplementedError('Updating traces not supported. Use Replot() instead.')
 
     def Replot(self):
         '''

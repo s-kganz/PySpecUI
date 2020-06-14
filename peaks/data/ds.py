@@ -148,3 +148,5 @@ class DataSource(object):
             caller='DataSource.GetTraceByID',
             msg="No trace with ID {}".format(id)
         )
+        
+        return None
