@@ -9,7 +9,7 @@ from pubsub import pub
 
 # WX MODULES
 import wx
-from wxasync import StartCoroutine
+from wxasync import StartCoroutine, WxAsyncApp
 
 # NAMESPACE MODULES
 from peaks.data.ds import DataSource
