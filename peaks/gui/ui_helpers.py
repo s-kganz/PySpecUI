@@ -11,6 +11,18 @@ import wx
 # NAMESPACE MODULES
 from peaks.gui.popups import Menu_TreeCtrlTrace
 
+class AutoLayoutCollapsiblePane(wx.CollapsiblePane):
+    '''
+    Calls .PostSizeEvent on the parent pane to resize controls
+    automatically on expand/collapse.
+    '''
+    def __init__(self, *args, **kwargs):
+        super(AutoLayoutCollapsiblePane, self).__init__(*args, **kwargs)
+        self.Bind(wx.EVT_COLLAPSIBLEPANE_CHANGED, self.OnChange)
+    
+    def OnChange(self, event):
+        self.GetParent().PostSizeEvent()
+
 class DirTreeCtrl(wx.TreeCtrl):
     '''
     A window showing files/folder in the current working directory. Implementation comes from:

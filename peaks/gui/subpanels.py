@@ -7,6 +7,7 @@ of the application.
 from pubsub import pub
 import asyncio
 import os
+import math
 
 # WXPYTHON MODULES
 import wx
@@ -18,6 +19,8 @@ from peaks.data.ds import DataSource
 from peaks.data.spec import Spectrum
 from .dialogs import *
 from .popups import *
+from .ui_helpers import *
+
 
 class SubPanel():
     '''
@@ -144,8 +147,8 @@ class DataTab(SubPanel):
         try:
             assert(trace is not None)
         except AssertionError:
-            pub.sendMessage('Logging.Error', caller='DataTab.AddTrace',
-                            msg="Received a null trace object.")
+            raise ValueError("DataTab received a null trace object.")
+
             return
 
         field = str(trace)
@@ -231,7 +234,8 @@ class DataTab(SubPanel):
         clk_item = event.GetItem()
         popup = None
         if issubclass(type(self.tree.GetItemData(clk_item)), Trace):
-            popup = Menu_TreeCtrlTrace(self, clk_item, self.tree.GetItemData(clk_item))
+            popup = Menu_TreeCtrlTrace(
+                self, clk_item, self.tree.GetItemData(clk_item))
 
         if popup:
             self.tree.PopupMenu(popup, event.GetPoint())
@@ -244,20 +248,25 @@ class TabPanel(SubPanel):
 
     def __init__(self, parent, datasrc):
         self.data_tab_idx = 0
+        self.model_tuner = None
+        self.model_tuner_idx = None
         super(TabPanel, self).__init__(parent, datasrc)
+
+        pub.subscribe(self.CreateModelTuner, 'Data.Model.Tune')
+        pub.subscribe(self.DestroyModelTuner, 'Data.Model.EndTune')
 
     def InitUI(self):
         '''
         Initialize self.ntabs panels
         '''
         # Create notebook object
-        nb = wx.Notebook(self.panel)
+        self.nb = wx.Notebook(self.panel)
         # Create tab objects
         tabs = []
-        self.data_tab = DataTab(nb, self.datasrc)
+        self.data_tab = DataTab(self.nb, self.datasrc)
         tabs.append(self.data_tab.GetPanel())
 
-        self.catalog = CatalogTab(nb, self.datasrc)
+        self.catalog = CatalogTab(self.nb, self.datasrc)
         tabs.append(self.catalog.GetPanel())
 
         # Names of each tab
@@ -265,37 +274,53 @@ class TabPanel(SubPanel):
         # Add all tabs to the notebook object
         assert(len(names) == len(tabs))
         for i in range(len(tabs)):
-            nb.AddPage(tabs[i], names[i])
+            self.nb.AddPage(tabs[i], names[i])
 
         # Place notebook in a sizer so it expands to the size of the panel
         sizer = wx.BoxSizer()
-        sizer.Add(nb, 1, wx.EXPAND)
+        sizer.Add(self.nb, 1, wx.EXPAND)
 
         self.panel.SetSizerAndFit(sizer)
-    
+
     def CreateModelTuner(self, model=None):
         '''
         Launch a model tuning dialog as a new page in the notebook.
         '''
         # verify integrity of passed object
         if not model:
-            pub.sendMessage(
-                'Logging.Error', 
-                caller='TabPanel.CreateModelTuner', 
-                msg="Received a null model object."
-            )
-            return
+            raise ValueError("Model tuner received a null model object.")
         if not issubclass(type(model), Model):
-            pub.sendMessage(
-                'Logging.Error',
-                caller='TabPanel.CreateModelTuner',
-                msg='Passed object is not a Model subclass.'
-            )
-            return
+            raise ValueError(
+                "Model tuner cannot tune an object that is not a model subclass.")
+
+        # Verify that another tuner is not active
+        if self.model_tuner is not None:
+            with wx.MessageDialog(
+                None,
+                "Another tune window is open. Close the other window before "
+                "starting another tuner",
+                caption='Cannot Start Tuner',
+                style=wx.OK | wx.ICON_WARNING
+            ) as msgbox:
+                msgbox.ShowModal()
+                return
+
+        # Create the subpanel to append to the data tab
+        self.model_tuner = ModelTunePanel(self.nb, model)
+        self.nb.AddPage(self.model_tuner.GetPanel(), 'Model Tuner', select=True)
+    
+    def DestroyModelTuner(self):
+        '''
+        End model tuning by destroying the notebook page.
+        '''
+        if self.model_tuner is None:
+            raise RuntimeError("DestroyModelTuner was called, but the tuner does not exist.")
+        tuner_idx = self.nb.FindPage(self.model_tuner.GetPanel())
+        if tuner_idx == wx.NOT_FOUND:
+            raise RuntimeError("Did not find page corresponding to model tuner")
+        self.nb.DeletePage(tuner_idx)
+        self.model_tuner = None
         
-        # Create the subpanel to append to the  
-
-
 
 class TextPanel(SubPanel):
     '''
@@ -336,14 +361,14 @@ class PlotRegion(SubPanel):
         super(PlotRegion, self).__init__(parent, datasrc)
         pub.subscribe(self.AddTraceToPlot, 'Plotting.AddTrace')
         pub.subscribe(self.RemoveTraceFromPlot, 'Plotting.RemoveTrace')
-        pub.subscribe(self.UpdateTraces, 'Plotting.Replot')
-        
+        pub.subscribe(self.Replot, 'Plotting.Replot')
+
     def _SuppressStatus(self, *args, **kwargs):
-            '''
-            Suppress PlotPanel messenger calls.
-            '''
-            return
-    
+        '''
+        Suppress PlotPanel messenger calls.
+        '''
+        return
+
     def InitUI(self):
         '''
         Create widgets.
@@ -355,8 +380,8 @@ class PlotRegion(SubPanel):
 
         vbox = wx.BoxSizer(wx.VERTICAL)
 
-        vbox.Add(self.plot_panel, 2, wx.EXPAND)
-        vbox.Add(self.plot_data.GetPanel(), 1, wx.EXPAND)
+        vbox.Add(self.plot_panel, 1, wx.EXPAND)
+        vbox.Add(self.plot_data.GetPanel(), 0, wx.EXPAND)
 
         self.panel.SetSizerAndFit(vbox)
 
@@ -385,7 +410,7 @@ class PlotRegion(SubPanel):
             pub.sendMessage('UI.SetStatus', text='Done.')
 
         asyncio.get_running_loop().run_in_executor(
-            None, lambda: run(t_id)
+            wx.GetApp().PlotThread(), lambda: run(t_id)
         )
 
     def RemoveTraceFromPlot(self, t_id):
@@ -394,15 +419,9 @@ class PlotRegion(SubPanel):
         list of plotted traces and set internal trace.is_plotted property
         to False.
         '''
-        def start_replot():
-            pub.sendMessage('UI.SetStatus', text='Removing trace...')
-            # Clear and re-draw the plot
-            self.Replot()
-            pub.sendMessage('UI.SetStatus', text='Done.')
-
         # The blocking segment of this routine is the replotting,
         # so management of the internal IDs can happen before the thread
-        # starts to prevent out of turn trace IO operations. 
+        # starts to prevent out of turn trace IO operations.
         t_obj = self.datasrc.GetTraceByID(t_id)
         if t_obj:
             t_obj.is_plotted = False
@@ -410,13 +429,11 @@ class PlotRegion(SubPanel):
         try:
             self.plotted_traces.remove(t_id)
         except ValueError:
-            pub.sendMessage(
-                'Logging.Error', 
-                caller='PlotRegion.RemoveTraceFromPlot', 
-                msg="Plot window does not have trace with id {}.".format(t_id))
-        
+            raise RuntimeError(
+                "Plot window does not have trace with id {}".format(t_id))
+
         asyncio.get_running_loop().run_in_executor(
-            None, lambda: start_replot()
+            wx.GetApp().PlotThread(), lambda: self.Replot()
         )
 
     def UpdateTraces(self, traces):
@@ -424,27 +441,35 @@ class PlotRegion(SubPanel):
         Updating a single trace without re-rendering the entire
         plot window is not currently supported.
         '''
-        raise NotImplementedError('Updating traces not supported. Use Replot() instead.')
+        raise NotImplementedError(
+            'Updating traces not supported. Use Replot() instead.')
 
     def Replot(self):
         '''
         Replot all loaded traces.
         '''
-        self.is_blank = True
-        self.plot_panel.reset_config()  # Remove old names of traces
-        if len(self.plotted_traces) > 0:
-            to_plot = list()
-            for id in self.plotted_traces:
-                # Get the trace from the data manager
-                spec = self.datasrc.GetTraceByID(id)
-                if not spec:
-                    continue  # Make sure the spectrum isn't null
-                to_plot.append(spec)
-                spec.is_plotted = True
-            self.PlotMany(to_plot)
-        else:
-            self.plot_panel.clear()  # This call forces the plot to update visually
-            self.plot_panel.unzoom_all()
+        def do_plot():
+            pub.sendMessage('UI.SetStatus', text='Drawing...')
+            self.is_blank = True
+            self.plot_panel.reset_config()  # Remove old names of traces
+            if len(self.plotted_traces) > 0:
+                to_plot = list()
+                for id in self.plotted_traces:
+                    # Get the trace from the data manager
+                    spec = self.datasrc.GetTraceByID(id)
+                    if not spec:
+                        continue  # Make sure the spectrum isn't null
+                    to_plot.append(spec)
+                    spec.is_plotted = True
+                self.PlotMany(to_plot)
+            else:
+                self.plot_panel.clear()  # This call forces the plot to update visually
+                self.plot_panel.unzoom_all()
+            pub.sendMessage('UI.SetStatus', text='Done.')
+
+        asyncio.get_running_loop().run_in_executor(
+            wx.GetApp().PlotThread(), lambda: do_plot()
+        )
 
     def PlotTrace(self, t_obj, **kwargs):
         '''
@@ -469,8 +494,178 @@ class PlotRegion(SubPanel):
                 {
                     'xdata': t.getx(),
                     'ydata': t.gety(),
-                    'label': t.label()}
+                    'label': t.label()
+                }
                 for t in traces
             ]
             self.plot_panel.plot_many(plot_dict, show_legend=True)
             self.is_blank = False
+
+
+class ModelTunePanel(SubPanel):
+    '''
+    Class that enables real-time modification of model parameters in
+    the tab panel.
+    '''
+
+    def __init__(self, parent, model):
+        '''
+        Attach this object to the notebook and build widgets
+        dynamically from the passed model object.
+        '''
+        self.model = model
+        self.param_ctrls = [] # get handles into all the controls
+        self.initial_params = [] # model parameter values before tuning
+        super(ModelTunePanel, self).__init__(
+            parent, None)  # datasrc unnecessary
+
+    def InitUI(self):
+        '''
+        Dynamically build widgets for tuning the model from the object itself.
+        '''
+        # get initial model settings
+        params = self.model.GetTunerParameters()
+        # stash their initial values in case the user cancels tuning
+        for peak in params:
+            for key in peak:
+                # remember that the type of the parameter gets
+                # passed as well, so get the value from the tuple
+                self.initial_params.append(peak[key][1])
+        
+        # scrollable view for model controls (since there could be many)
+        scroll = wx.ScrolledWindow(self.GetPanel())
+        scroll.SetScrollbars(1, 1, 1000, 1000)
+        mainsizer = wx.BoxSizer(wx.VERTICAL)
+        mainsizer.Add(scroll, 1, wx.EXPAND)
+        self.GetPanel().SetSizer(mainsizer)
+
+        # Buttons for finishing/canceling tuning
+        btnsizer = wx.BoxSizer(wx.HORIZONTAL)
+        btn_ok = wx.Button(self.GetPanel(), label='Finish')
+        btn_ok.Bind(wx.EVT_BUTTON, self.OnFinish)
+        btnsizer.Add(btn_ok, 1, wx.CENTER)
+
+        btn_cancel = wx.Button(self.GetPanel(), label='Cancel')
+        btn_cancel.Bind(wx.EVT_BUTTON, self.OnCancel)
+        btnsizer.Add(btn_cancel, 1, wx.CENTER)
+        
+        mainsizer.Add(btnsizer, 0, wx.TOP, 15)
+
+        # Sizers for within the scrollable window itself
+        hsizer = wx.BoxSizer(wx.HORIZONTAL)
+        vsizer = wx.BoxSizer(wx.VERTICAL)
+
+        # Make the controls...
+        for i in range(len(params)):
+            self.param_ctrls.append(dict())
+            col = AutoLayoutCollapsiblePane(
+                scroll,
+                label='Peak {}'.format(i+1)
+            )
+
+            colpane = col.GetPane()
+            grid = wx.GridSizer(2, len(params[i]), 5)  # rows, cols, gap
+
+            # Order should be constant so no key sorting necessary
+            for key in params[i]:
+                # Label the control by the key
+                grid.Add(wx.StaticText(colpane, label=key.title()), 1)
+                # Determine what kind of field this is
+                fieldtype, fieldvalue = params[i][key]
+
+                if fieldtype == 'float':
+                    ctrl = wx.SpinCtrlDouble(
+                        colpane,
+                        initial=fieldvalue,
+                        inc=0.1,
+                        min=0,
+                        max=1e9 # NoneType doesn't work so b i g number instead
+                    )
+
+                    grid.Add(ctrl)
+                    self.GetPanel().Bind(
+                        wx.EVT_SPINCTRLDOUBLE,
+                        self.OnParameterChanged,
+                        ctrl
+                    )
+
+                elif fieldtype == 'int':
+                    ctrl = wx.SpinCtrl(
+                        colpane,
+                        initial=fieldvalue,
+                        inc=1,
+                        min=0,
+                        max=1e9 # NoneType doesn't work so b i g number instead
+                    )
+
+                    grid.Add(ctrl)
+                    self.GetPanel().Bind(
+                        wx.EVT_SPINCTRL,
+                        self.OnParameterChanged,
+                        ctrl
+                    )
+
+                else:
+                    raise TypeError(
+                        "Unsupported tuner type: {}".format(fieldtype))
+                
+                # Add the control to the collection of handles
+                self.param_ctrls[i][key] = ctrl
+
+            colpane.SetSizer(grid)
+            vsizer.Add(col, 0)
+
+            # Dividers make the controls a little easier to read
+            # Don't need one after the last control though.
+            if i != len(params) - 1:
+                wx.StaticLine(scroll)
+
+        # Final sizer setup
+        hsizer.Add(vsizer, 1, wx.EXPAND)
+        scroll.SetSizer(hsizer)
+
+    def OnParameterChanged(self, event):
+        '''
+        Replot the model in response to changes in parameter values.
+        '''
+        newparams = []
+        # Get a flat list of parameter values in order and send it to the model
+        for peak in self.param_ctrls:
+            for key in peak:
+                newparams.append(peak[key].GetValue())
+
+        self.model.SetTunerParameters(newparams)
+        # only replot if the model is already visible
+        if self.model.is_plotted:
+            pub.sendMessage('Plotting.Replot')
+
+    def OnCancel(self, event):
+        '''
+        Confirm whether the user wants to stop tuning. If cancelled, 
+        send the original model parameters back to the object.
+        '''
+        with wx.MessageDialog(
+            self.panel,
+            "Cancel model tuning?",
+            style=wx.CENTRE | wx.YES_NO | wx.CANCEL
+        ) as dialog:
+            if dialog.ShowModal() == wx.ID_YES:
+                # pop the initial model parameters back into the model
+                self.model.SetTunerParameters(self.initial_params)
+                # update the plot if necessary
+                if self.model.is_plotted:
+                    pub.sendMessage('Plotting.Replot')
+                pub.sendMessage('Data.Model.EndTune')
+    
+    def OnFinish(self, event):
+        '''
+        Confirm whether the user wants to stop tuning. If so, 
+        send the new model parameters back to the object.
+        '''
+        with wx.MessageDialog(
+            self.panel,
+            "Finish model tuning?",
+            style=wx.CENTRE | wx.YES_NO | wx.CANCEL
+        ) as dialog:
+            if dialog.ShowModal() == wx.ID_YES:
+                pub.sendMessage('Data.Model.EndTune')
