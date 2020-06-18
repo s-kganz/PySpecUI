@@ -4,6 +4,8 @@ function.
 '''
 
 # GENERAL MODULES
+import asyncio
+import concurrent
 from asyncio import get_event_loop
 from pubsub import pub
 
@@ -147,6 +149,10 @@ class App(WxAsyncApp):
 
     def __init__(self, datasrc=None):
         self.datasrc = datasrc
+        # Define threads for concurrent application tasks. There should
+        # only be one thread for each of these operations.
+        self.plot_thread = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        self.tool_thread = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         super(App, self).__init__()
 
     def OnInit(self):
@@ -156,6 +162,18 @@ class App(WxAsyncApp):
         self.layout = Layout(None, title='PyPeaks', datasrc=self.datasrc)
         self.layout.Show()
         return True
+    
+    def PlotThread(self):
+        '''
+        Hook for the plotting thread.
+        '''
+        return self.plot_thread
+    
+    def ToolThread(self):
+        '''
+        Hook for the tool thread.
+        '''
+        return self.tool_thread
 
 
 def start_app():
@@ -164,6 +182,7 @@ def start_app():
     '''
     ds = DataSource()
     app = App(datasrc=ds)
-    pub.exportTopicTreeSpec('test')
     loop = get_event_loop()
     loop.run_until_complete(app.MainLoop())
+    pub.exportTopicTreeSpec('test')
+
