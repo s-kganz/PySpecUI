@@ -17,10 +17,13 @@ from scipy.optimize import least_squares
 from pubsub import pub
 import asyncio
 
-__all__ = ['ModelGauss']
+# WX MODULES
+from wx import GetApp
 
 # NAMESPACE MODULES
 from peaks.data.data_helpers import Trace
+
+__all__ = ['ModelGauss']
 
 def r_squared(a, b):
     '''
@@ -42,9 +45,9 @@ class Model(object):
     def __init__(self, spec):
         self.spectrum = spec  # The spectrum associated with this model
 
-        self.params = []  # For a sum of n functions, each accepting m
-                          # parameters, this becomes a flat array with
-                          # m * n elements
+        self.params = None  # For a sum of n functions, each accepting m
+                            # parameters, this becomes a flat array with
+                            # m * n elements
 
         self.trace = None # The prediction this model makes on the frequency domain
                           # of the spectrum.
@@ -74,8 +77,21 @@ class Model(object):
         Estimate the parameters of the true model. The output of this function should
         be inspected and then passed to .Fit() to generate the final, tuned model.
         '''
-        raise NotImplementedError(
-            "Model parameter estimation must be defined!")
+        raise NotImplementedError("Model parameter estimation must be defined!")
+    
+    def GetTunerParameters(self):
+        '''
+        After self.paramters has been set, return a dictionary with meaningful labels
+        so that a tuner window can create a meaningful interface for tweaking the model.
+        '''
+        raise NotImplementedError("")
+
+    def SetTunerParameters(self):
+        '''
+        Facilitate communication with tuner windows by accepting a rolled-up dictionary
+        of model parameters, setting the object's internal parameters, and recalculating
+        the trace.
+        '''
 
 
 class ModelGauss(Model, Trace):
@@ -257,6 +273,40 @@ class ModelGauss(Model, Trace):
         Legend label for when the model is plotted.
         '''
         return "{} ({})".format(self.spectrum.name, self.model_name)
+    
+    # Tuner communication functions
+    def GetTunerParameters(self):
+        '''
+        Roll up current model parameters into a labeled dictionary for display
+        in a tuner window.
+        '''
+        if self.params is None:
+            raise RuntimeError("Model that has not been fitted cannot be tuned.")
+            
+        ret = []
+        for i in range(0, len(self.params), 3):
+            ret.append(
+                {
+                    'a': ('float', self.params[i]),
+                    'mu': ('float', self.params[i+1]),
+                    'sigma': ('float', self.params[i+2])
+                }
+            )
+        
+        # sort by mu so that peak n corresponds to peak n to the viewer
+        return sorted(ret, key=lambda x: x['mu'])
+
+    def SetTunerParameters(self, newparams):
+        '''
+        Receive a set of model parameters from a tuner and set the model object's
+        properties and trace.
+        '''
+        if not len(newparams) % 3 == 0:
+            raise ValueError('Length of new parameters must be divisible by 3.')
+        
+        # Re-evaluate the trace
+        self.params = newparams.copy() # everything should be a float so deepcopy isn't necessary
+        self.trace = self.EvalModel()
 
     def __str__(self):
         return self.label()
@@ -276,7 +326,7 @@ def ExecModel(M, spec, params={}):
         pub.sendMessage('UI.SetStatus', text='Done.')
     
     asyncio.get_running_loop().run_in_executor(
-        None,
+        GetApp().ToolThread(),
         lambda: run(M, spec, params)
     )
 
