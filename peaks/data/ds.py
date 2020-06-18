@@ -134,19 +134,15 @@ class DataSource(object):
                 self.traces.pop(i)
                 break
     
-    def GetTraceByID(self, id):
+    def GetTraceByID(self, t_id):
         '''
         Return spectrum object corresponding to the given id. Returns
         None if no specturm was found
         '''
         for trace in self.traces:
-            if trace.id == id:
+            if trace.id == t_id:
                 return trace
         
-        pub.sendMessage(
-            'Logging.Error',
-            caller='DataSource.GetTraceByID',
-            msg="No trace with ID {}".format(id)
-        )
+        raise ValueError("No trace with ID {}".format(t_id))
         
         return None
