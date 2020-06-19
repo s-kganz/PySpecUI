@@ -361,7 +361,7 @@ class PlotRegion(SubPanel):
         super(PlotRegion, self).__init__(parent, datasrc)
         pub.subscribe(self.AddTraceToPlot, 'Plotting.AddTrace')
         pub.subscribe(self.RemoveTraceFromPlot, 'Plotting.RemoveTrace')
-        pub.subscribe(self.Replot, 'Plotting.Replot')
+        pub.subscribe(self.Refresh, 'Plotting.Replot')
 
     def _SuppressStatus(self, *args, **kwargs):
         '''
@@ -433,43 +433,39 @@ class PlotRegion(SubPanel):
                 "Plot window does not have trace with id {}".format(t_id))
 
         asyncio.get_running_loop().run_in_executor(
-            wx.GetApp().PlotThread(), lambda: self.Replot()
+            wx.GetApp().PlotThread(), lambda: self._replot()
         )
 
-    def UpdateTraces(self, traces):
+    def Refresh(self):
         '''
-        Updating a single trace without re-rendering the entire
-        plot window is not currently supported.
+        Replot all traces. Useful when objects change internally
+        e.g. tuning a model.
         '''
-        raise NotImplementedError(
-            'Updating traces not supported. Use Replot() instead.')
+        asyncio.get_running_loop().run_in_executor(
+            wx.GetApp().PlotThread(), lambda: self._replot()
+        )
 
-    def Replot(self):
+    def _replot(self):
         '''
         Replot all loaded traces.
         '''
-        def do_plot():
-            pub.sendMessage('UI.SetStatus', text='Drawing...')
-            self.is_blank = True
-            self.plot_panel.reset_config()  # Remove old names of traces
-            if len(self.plotted_traces) > 0:
-                to_plot = list()
-                for id in self.plotted_traces:
-                    # Get the trace from the data manager
-                    spec = self.datasrc.GetTraceByID(id)
-                    if not spec:
-                        continue  # Make sure the spectrum isn't null
-                    to_plot.append(spec)
-                    spec.is_plotted = True
-                self.PlotMany(to_plot)
-            else:
-                self.plot_panel.clear()  # This call forces the plot to update visually
-                self.plot_panel.unzoom_all()
-            pub.sendMessage('UI.SetStatus', text='Done.')
-
-        asyncio.get_running_loop().run_in_executor(
-            wx.GetApp().PlotThread(), lambda: do_plot()
-        )
+        pub.sendMessage('UI.SetStatus', text='Drawing...')
+        self.is_blank = True
+        self.plot_panel.reset_config()  # Remove old names of traces
+        if len(self.plotted_traces) > 0:
+            to_plot = list()
+            for id in self.plotted_traces:
+                # Get the trace from the data manager
+                spec = self.datasrc.GetTraceByID(id)
+                if not spec:
+                    continue  # Make sure the spectrum isn't null
+                to_plot.append(spec)
+                spec.is_plotted = True
+            self.PlotMany(to_plot)
+        else:
+            self.plot_panel.clear()  # This call forces the plot to update visually
+            self.plot_panel.unzoom_all()
+        pub.sendMessage('UI.SetStatus', text='Done.')
 
     def PlotTrace(self, t_obj, **kwargs):
         '''

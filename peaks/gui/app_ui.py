@@ -182,7 +182,5 @@ def start_app():
     '''
     ds = DataSource()
     app = App(datasrc=ds)
-    loop = get_event_loop()
-    loop.run_until_complete(app.MainLoop())
+    asyncio.run(app.MainLoop())
     pub.exportTopicTreeSpec('test')
-
