@@ -10,3 +10,14 @@ script:
   - python -m unittest discover tests
 before_deploy:
   - pyinstaller "build.spec"
+  - zip dist.zip -r dist
+deploy:
+  provider: releases
+  api_key: $RELEASE_TOKEN
+  file_glob: true
+  file: dist.zip
+  skip_cleanup: true
+  draft: true
+  on:
+    tags: true
+  name: $TRAVIS_TAG (DRAFT)
