@@ -12,7 +12,6 @@ toydata
 # Build files
 build 
 dist
-*.spec
 *.egg-info
 
 # Organizational files
