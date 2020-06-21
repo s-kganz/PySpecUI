@@ -15,13 +15,15 @@ script:
   - python -m unittest discover tests
 before_deploy:
   - pyinstaller "build.spec"
+  - tar -cf dist.tar dist
 deploy:
   provider: releases
   api_key: $RELEASE_TOKEN
   file_glob: true
-  local_dir: dist/start_ui
   skip_cleanup: true
   draft: true
+  prerelease: true
+  file: dist.tar
   on:
     branch: release
   name: $TRAVIS_TAG (DRAFT)
