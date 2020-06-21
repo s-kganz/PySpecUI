@@ -37,15 +37,17 @@ class TestModelGauss(unittest.TestCase):
         '''
         Generate many Gauss signals and attempt fits
         '''
-        print("\na\tmu\tsig")
-        print('-' * 20)
+        #print("\na\tmu\tsig")
+        #print('-' * 20)
+        # reproducibility
+        np.random.seed(0)
         x = np.linspace(0, 100, num=100)
         for _ in range(10):
             a = np.random.randint(1, high=5)
             mu = np.random.randint(10, high=90)
             sig = np.random.randint(1, high=10)
 
-            print("{}\t{}\t{}".format(a, mu, sig))
+            #print("{}\t{}\t{}".format(a, mu, sig))
 
             g = ModelGauss.Gauss(x, a, mu, sig)
             spec = Spectrum.FromArrays(x, g)
@@ -57,9 +59,9 @@ class TestModelGauss(unittest.TestCase):
             self.assertEqual(mg.Fit(guess), True)
 
             # See if fitting matches the expected signal parameters
-            self.assertAlmostEqual(a, mg.params[0], delta=0.5)
+            self.assertAlmostEqual(a, mg.params[0], delta=0.1)
             self.assertAlmostEqual(mu, mg.params[1], delta=0.5)
-            self.assertAlmostEqual(sig, mg.params[2], delta=0.5)
+            self.assertAlmostEqual(sig, mg.params[2], delta=0.1)
     
     def test_overlapping_signal(self):
         # Construct a signal with two overlapping signals of equal height
@@ -73,6 +75,18 @@ class TestModelGauss(unittest.TestCase):
 
         # See if fitting proceeds at all
         mg = ModelGauss(spec, None)
-        guess = mg.ParamGuess(peak_range=(0, 1))
+        guess = mg.ParamGuess(peak_range=(0, 5))
         self.assertNotEqual(len(guess), 0)
+        # Did we get the right number of params?
+        self.assertEqual(len(guess), len(params))
         self.assertEqual(mg.Fit(guess), True)
+
+        # Are all the parameters equal?
+        # sort since peak order doesn't matter
+        # this isn't robust in other comparisons but for here
+        # it's fine
+        for model, true in zip(sorted(mg.params), sorted(params)):
+            self.assertAlmostEqual(model, true, delta=0.1)
+
+if __name__ == '__main__':
+    unittest.main()

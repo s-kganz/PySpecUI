@@ -63,8 +63,6 @@ class DataSource(object):
         '''
         raise NotImplementedError("AddManyFromDataFrame not implemented yet.")
 
-    
-
     def AddTraceFromCSV(self, file, options = {}):
         '''
         Attempt to parse a new Spectrum object and add it to the
