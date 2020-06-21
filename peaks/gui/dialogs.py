@@ -110,10 +110,6 @@ class DialogLoad(CustomDialog):
             parse_pane, choices=["Tab", "Comma", "Space"])
         self.delimCtrl.SetSelection(1)
 
-        # Header choice
-        wx.StaticText(parse_pane, label="Parse headers: ")
-        self.headCtrl = wx.CheckBox(parse_pane)
-
         # Comment character
         wx.StaticText(parse_pane, label="Comment character: ")
         self.commCtrl = wx.TextCtrl(parse_pane, value='#')
@@ -122,7 +118,12 @@ class DialogLoad(CustomDialog):
         # Frequency column
         wx.StaticText(parse_pane, label="Index of frequency column: ")
         self.freqIndCtrl = IntCtrl(
-            parse_pane, min=0, limited=True, allow_none=False)
+            parse_pane, min=0, limited=True, allow_none=False, value=0)
+
+        # Spectral column
+        wx.StaticText(parse_pane, label="Index of spectral column: ")
+        self.specIndCtrl = IntCtrl(
+            parse_pane, min=0, limited=True, allow_none=False, value=1)
 
         # Lines to skip
         wx.StaticText(parse_pane, label="Lines to skip: ")
@@ -164,9 +165,9 @@ class DialogLoad(CustomDialog):
         commChar = self.commCtrl.GetValue()
         options = {
                 'delimChoice': delimStr,
-                'header': self.headCtrl.GetValue(),
                 'commentChar': commChar,
                 'freqColInd': self.freqIndCtrl.GetValue(),
+                'specColInd': self.specIndCtrl.GetValue(),
                 'skipCount': self.skipCtrl.GetValue(),
                 'freqUnit': self.freqUnitCtrl.GetValue(),
                 'specUnit': self.specUnitCtrl.GetValue()
