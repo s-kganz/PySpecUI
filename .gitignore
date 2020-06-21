@@ -13,6 +13,7 @@ toydata
 build 
 dist
 *.spec
+*.egg-info
 
 # Organizational files
 features.txt
