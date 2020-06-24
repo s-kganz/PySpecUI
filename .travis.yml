@@ -14,8 +14,8 @@ script:
   - python -m unittest discover tests
 before_deploy:
   - pyinstaller "build.spec"
-  - tar -cf PySpecUI-executable.tar.gz dist\start_ui
-  - tar -cf PySpecUI-source.tar.gz peaks
+  - tar -cf PySpecUI_executable.tar dist
+  - tar -cf PySpecUI_source.tar peaks
 deploy:
   provider: releases
   api_key: $RELEASE_TOKEN
@@ -24,8 +24,8 @@ deploy:
   draft: true
   prerelease: true
   file:
-    - PySpecUI-executable.tar.gz
-    - PySpecUI-source.tar.gz
+    - PySpecUI_executable.tar
+    - PySpecUI_source.tar
   on:
     branch: release
   name: $TRAVIS_TAG (DRAFT)
