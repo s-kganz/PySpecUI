@@ -175,16 +175,20 @@ class DataTab(SubPanel):
         '''
         Toggles whether the trace object is shown in the plot window.
         '''
+        # If the plotting thread is busy, don't process the request
+        if not wx.GetApp().IsPlotThreadReady(): return
+        
         trace = self.tree.GetItemData(trace_item)
         if trace.is_plotted:
             # Remove the item from the plot
             pub.sendMessage('Plotting.RemoveTrace', t_id=trace.id)
             self.tree.SetItemBold(trace_item, bold=False)
+            trace.is_plotted = False
         else:
-            trace.is_plotted = True
-            # Plot it and make it boldface
             pub.sendMessage('Plotting.AddTrace', t_id=trace.id)
             self.tree.SetItemBold(trace_item, bold=True)
+            trace.is_plotted = True
+
 
     # Event handlers
     def OnDblClick(self, event):
@@ -409,9 +413,7 @@ class PlotRegion(SubPanel):
             self.plotted_traces.append(t_id)
             pub.sendMessage('UI.SetStatus', text='Done.')
 
-        asyncio.get_running_loop().run_in_executor(
-            wx.GetApp().PlotThread(), lambda: run(t_id)
-        )
+        pub.sendMessage('StartPlotThread', callback=lambda: run(t_id))
 
     def RemoveTraceFromPlot(self, t_id):
         '''
@@ -419,31 +421,30 @@ class PlotRegion(SubPanel):
         list of plotted traces and set internal trace.is_plotted property
         to False.
         '''
-        # The blocking segment of this routine is the replotting,
-        # so management of the internal IDs can happen before the thread
-        # starts to prevent out of turn trace IO operations.
-        t_obj = self.datasrc.GetTraceByID(t_id)
-        if t_obj:
-            t_obj.is_plotted = False
+        # Although managing ids is not blocking, it can cause a runtime error
+        # if the user spams the plot toggle
+        def run():
+            t_obj = self.datasrc.GetTraceByID(t_id)
+            if t_obj:
+                t_obj.is_plotted = False
 
-        try:
-            self.plotted_traces.remove(t_id)
-        except ValueError:
-            raise RuntimeError(
-                "Plot window does not have trace with id {}".format(t_id))
+            try:
+                self.plotted_traces.remove(t_id)
+            except ValueError:
+                raise RuntimeError(
+                    "Plot window does not have trace with id {}".format(t_id))
+            
+            self._replot()
 
-        asyncio.get_running_loop().run_in_executor(
-            wx.GetApp().PlotThread(), lambda: self._replot()
-        )
+        pub.sendMessage('StartPlotThread', callback=lambda: run())
+
 
     def Refresh(self):
         '''
         Replot all traces. Useful when objects change internally
         e.g. tuning a model.
         '''
-        asyncio.get_running_loop().run_in_executor(
-            wx.GetApp().PlotThread(), lambda: self._replot()
-        )
+        pub.sendMessage('StartPlotThread', callback=lambda: self._replot())
 
     def _replot(self):
         '''
