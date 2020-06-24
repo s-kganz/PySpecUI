@@ -325,9 +325,6 @@ def ExecModel(M, spec, params={}):
         )
         pub.sendMessage('UI.SetStatus', text='Done.')
     
-    asyncio.get_running_loop().run_in_executor(
-        GetApp().ToolThread(),
-        lambda: run(M, spec, params)
-    )
+    pub.sendMessage('StartToolThread', lambda: run(M, spec, params))
 
 pub.subscribe(ExecModel, 'Data.Model.Create')

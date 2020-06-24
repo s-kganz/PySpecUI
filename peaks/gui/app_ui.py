@@ -17,6 +17,7 @@ from wxasync import StartCoroutine, WxAsyncApp
 from peaks.data.ds import DataSource
 from .subpanels import *
 
+
 class Layout(wx.Frame):
     '''
     Main frame of the application.
@@ -153,6 +154,11 @@ class App(WxAsyncApp):
         # only be one thread for each of these operations.
         self.plot_thread = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         self.tool_thread = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        self.plot_thread_future = None
+        self.tool_thread_future = None
+
+        pub.subscribe(self.StartPlotThread, 'StartPlotThread')
+        pub.subscribe(self.StartToolThread, 'StartToolThread')
         super(App, self).__init__()
 
     def OnInit(self):
@@ -162,18 +168,39 @@ class App(WxAsyncApp):
         self.layout = Layout(None, title='PyPeaks', datasrc=self.datasrc)
         self.layout.Show()
         return True
-    
-    def PlotThread(self):
+
+    def StartPlotThread(self, callback):
         '''
         Hook for the plotting thread.
         '''
-        return self.plot_thread
+        if self.plot_thread_future is None or self.plot_thread_future.done():
+            self.plot_thread_future = asyncio.get_running_loop().run_in_executor(
+                self.plot_thread, callback
+            )
+            return True
+        else:
+            return False
     
-    def ToolThread(self):
+    def IsPlotThreadReady(self):
+        '''
+        Hook for status of the plotting thread.
+        '''
+        return self.plot_thread_future is None or self.plot_thread_future.done()
+
+    def StartToolThread(self, callback):
         '''
         Hook for the tool thread.
         '''
-        return self.tool_thread
+        if self.tool_thread_future is None or self.tool_thread_future.done():
+            self.tool_thread_future = asyncio.get_running_loop().run_in_executor(
+                self.plot_thread, callback
+            )
+            return True
+        else:
+            return False
+    
+    def IsToolThreadReady(self):
+        return self.tool_thread_future is None or self.tool_thread_future.done()
 
 
 def start_app():
