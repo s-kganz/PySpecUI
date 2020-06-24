@@ -2,7 +2,6 @@ branches:
   only:
     - master
     - release
-
 os: windows
 language: shell
 before_install:
@@ -15,7 +14,8 @@ script:
   - python -m unittest discover tests
 before_deploy:
   - pyinstaller "build.spec"
-  - tar -cf dist.tar dist
+  - tar -cf PySpecUI_executable.tar dist
+  - tar -cf PySpecUI_source.tar peaks
 deploy:
   provider: releases
   api_key: $RELEASE_TOKEN
@@ -23,7 +23,9 @@ deploy:
   skip_cleanup: true
   draft: true
   prerelease: true
-  file: dist.tar
+  file:
+    - PySpecUI_executable.tar
+    - PySpecUI_source.tar
   on:
     branch: release
   name: $TRAVIS_TAG (DRAFT)
