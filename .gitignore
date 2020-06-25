@@ -3,7 +3,7 @@ __pycache__
 .vscode
 
 # Environment
-wxpython
+kivy
 
 # dev help
 examples

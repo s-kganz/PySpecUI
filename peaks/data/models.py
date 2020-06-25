@@ -17,9 +17,6 @@ from scipy.optimize import least_squares
 from pubsub import pub
 import asyncio
 
-# WX MODULES
-from wx import GetApp
-
 # NAMESPACE MODULES
 from peaks.data.data_helpers import Trace
 

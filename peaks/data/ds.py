@@ -9,9 +9,6 @@ import numpy as np
 from pubsub import pub
 from os.path import basename
 
-# WX MODULES
-import wx
-
 # NAMESPACE MODULES
 from .spec import Spectrum
 from .models import *
