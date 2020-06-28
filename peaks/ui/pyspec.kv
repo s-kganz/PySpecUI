@@ -1,0 +1,101 @@
+#: kivy 1.11.1
+#: import AppMenu kivy_garden.contextmenu
+#: import AppMenuTextItem kivy_garden.contextmenu
+#: import ContextMenu kivy_garden.contextmenu
+#: import ContextMenuTextItem kivy_garden.contextmenu
+#: import Graph kivy_garden.graph
+#: import TreeViewLabel kivy.uix.treeview.TreeViewLabel
+
+<MyLayout>:
+  # Make the tree accessible
+  tree: hierarchy
+  graph: graph
+  status_bar: status
+
+  id: layout
+  #orientation: "vertical"
+  # Menu at top of window
+  AppMenu:
+    id: app_menu
+    cancel_handler_widget: layout
+
+    AppMenuTextItem:
+      text: 'File'
+      ContextMenu:
+        ContextMenuTextItem:
+          text: 'Load'
+        ContextMenuTextItem:
+          text: 'Save'
+    AppMenuTextItem:
+      text: 'Model'
+      ContextMenu:
+        ContextMenuTextItem:
+          text: 'Fit Gaussian'
+        ContextMenuTextItem:
+          text: 'Tune'
+    AppMenuTextItem:
+      text: 'Tools'
+      ContextMenu:
+        ContextMenuTextItem:
+          text: 'SavGol smoother'
+        ContextMenuTextItem:
+          text: ''
+
+  # Primary content area
+  BoxLayout:
+    orientation: 'horizontal'
+    BoxLayout:
+      orientation: 'vertical'
+      Graph:
+        id: graph
+        border_color: [0, 0, 0, 0]
+        background_color: [0.25, 0.25, 0.25, 1]
+        xmin: 0
+        xmax: 100
+        ymin: -5
+        ymax: 5
+      BoxLayout:
+        orientation: 'vertical'
+        Button:
+          text: 'Additional plot information goes here'
+          on_press: hierarchy.add_node(TreeViewLabel(text="New Node"))
+        Button:
+          text: 'Make a plot'
+          on_press: root.create_random_plot()
+        Button:
+          text: 'Clear'
+          on_press: root.clear_all_plots()
+    Splitter:
+      sizable_from: 'left'
+      horizontal: False
+      min_size: 350
+      TabbedPanel:
+        default_tab: hierarchy_tab
+        size_hint_x: 0.7
+        TabbedPanelItem:
+          id: hierarchy_tab
+          text: 'Hierarchy'
+          ScrollView:
+            do_scroll_x: False
+            scroll_wheel_distance: 30
+
+            TreeView:
+              hide_root: True
+              id: hierarchy
+              # Set these two properties to enable scrolling
+              size_hint_y: None
+              height: self.minimum_height
+        TabbedPanelItem:
+          id: drawing_tab
+          text: 'Drawing'
+          Label: 
+            text: "Something something color picker"
+        TabbedPanelItem:
+          id: directory_tab
+          text: "Directory"
+          FileChooserListView:
+            multiselect: False
+  # Status bar
+  Label:
+    id: status
+    text: 'Idle'
