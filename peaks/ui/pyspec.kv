@@ -1,101 +1,103 @@
 #: kivy 1.11.1
-#: import AppMenu kivy_garden.contextmenu
-#: import AppMenuTextItem kivy_garden.contextmenu
-#: import ContextMenu kivy_garden.contextmenu
-#: import ContextMenuTextItem kivy_garden.contextmenu
 #: import Graph kivy_garden.graph
 #: import TreeViewLabel kivy.uix.treeview.TreeViewLabel
+#: import AppMenu kivy_garden.contextmenu
+#: import ContextMenu kivy_garden.contextmenu
+#: import ContextMenuTextItem kivy_garden.contextmenu
 
+# Root widget of the application
 <MyLayout>:
-  # Make the tree accessible
-  tree: hierarchy
-  graph: graph
-  status_bar: status
-
-  id: layout
-  #orientation: "vertical"
-  # Menu at top of window
-  AppMenu:
-    id: app_menu
-    cancel_handler_widget: layout
-
-    AppMenuTextItem:
-      text: 'File'
-      ContextMenu:
-        ContextMenuTextItem:
-          text: 'Load'
-        ContextMenuTextItem:
-          text: 'Save'
-    AppMenuTextItem:
-      text: 'Model'
-      ContextMenu:
-        ContextMenuTextItem:
-          text: 'Fit Gaussian'
-        ContextMenuTextItem:
-          text: 'Tune'
-    AppMenuTextItem:
-      text: 'Tools'
-      ContextMenu:
-        ContextMenuTextItem:
-          text: 'SavGol smoother'
-        ContextMenuTextItem:
-          text: ''
-
-  # Primary content area
-  BoxLayout:
-    orientation: 'horizontal'
+    # Make widgets important for application logic accessible
+    hierarchy: hierarchy
+    graph: graph
+    
+    # Container for everything that isn't the app menu
     BoxLayout:
-      orientation: 'vertical'
-      Graph:
-        id: graph
-        border_color: [0, 0, 0, 0]
-        background_color: [0.25, 0.25, 0.25, 1]
-        xmin: 0
-        xmax: 100
-        ymin: -5
-        ymax: 5
-      BoxLayout:
+        height: root.height - app_menu.height
+        size_hint: 1, None
         orientation: 'vertical'
-        Button:
-          text: 'Additional plot information goes here'
-          on_press: hierarchy.add_node(TreeViewLabel(text="New Node"))
-        Button:
-          text: 'Make a plot'
-          on_press: root.create_random_plot()
-        Button:
-          text: 'Clear'
-          on_press: root.clear_all_plots()
-    Splitter:
-      sizable_from: 'left'
-      horizontal: False
-      min_size: 350
-      TabbedPanel:
-        default_tab: hierarchy_tab
-        size_hint_x: 0.7
-        TabbedPanelItem:
-          id: hierarchy_tab
-          text: 'Hierarchy'
-          ScrollView:
-            do_scroll_x: False
-            scroll_wheel_distance: 30
-
-            TreeView:
-              hide_root: True
-              id: hierarchy
-              # Set these two properties to enable scrolling
-              size_hint_y: None
-              height: self.minimum_height
-        TabbedPanelItem:
-          id: drawing_tab
-          text: 'Drawing'
-          Label: 
-            text: "Something something color picker"
-        TabbedPanelItem:
-          id: directory_tab
-          text: "Directory"
-          FileChooserListView:
-            multiselect: False
-  # Status bar
-  Label:
-    id: status
-    text: 'Idle'
+        # Space the graphing area and hierarchy on the left and right
+        BoxLayout:
+            id: content_area
+            orientation: 'horizontal'
+            # Graphing area
+            BoxLayout:
+                orientation: 'vertical'
+                # Graphing window
+                # Sits inside a splitter so that everything remains resizable
+                Splitter:
+                    sizable_from: 'bottom'
+                    Graph:
+                        id: graph
+                        border_color: [0, 0, 0, 0]
+                        background_color: [0.25, 0.25, 0.25, 1.0]
+                        xmin: 0
+                        xmax: 100
+                        ymin: -5
+                        ymax: 5
+                # Graphing partner widgets
+                BoxLayout:
+                    orientation: 'vertical'
+                    Button:
+                        text: 'Additional plot information goes here'
+                        on_press: hierarchy.add_node(TreeViewLabel(text="New Node"))
+                    Button:
+                        text: 'Make a plot'
+                        on_press: root.create_random_plot()
+                    Button:
+                        text: 'Clear'
+                        on_press: root.clear_all_plots()
+            
+            # View for data, directory, drawing
+            TabbedPanel:
+                # Update this value with the number of tabs
+                tab_width: self.width / 3
+                id: tab_panel
+                default_tab: hierarchy_tab
+                size_hint_x: 0.5
+                # Show all data in the application
+                TabbedPanelItem:
+                    id: hierarchy_tab
+                    text: 'Hierarchy'
+                    ScrollView:
+                        do_scroll_x: False
+                        scroll_wheel_distance: 30
+                        TreeView:
+                            hide_root: True
+                            id: hierarchy
+                            # Set these two properties to enable scrolling
+                            size_hint_y: None
+                            height: self.minimum_height
+                # Widgets associated with drawing stuff
+                TabbedPanelItem:
+                    id: drawing_tab
+                    text: 'Drawing'
+                    Label: 
+                        text: "Something something color picker"
+                # View files in the project directory
+                TabbedPanelItem:
+                    id: directory_tab
+                    text: "Directory"
+                    FileChooserListView:
+                        multiselect: False
+    
+    # Main application menu
+    # This needs to be the last widget in the root layout
+    # in order to be drawn on top of everything below it
+    AppMenu:
+        id: app_menu
+        top: root.height
+        cancel_handler_widget: root
+        AppMenuTextItem:
+            text: 'Item 1'
+            ContextMenu:
+                ContextMenuTextItem:
+                    text: "Item 11"
+                ContextMenuTextItem:
+                    text: "Item 12"
+        AppMenuTextItem:
+            text: 'Item 2'
+            ContextMenu:
+                ContextMenuTextItem:
+                    text: 'Say hello!'
+                    on_release: print('Hello!')

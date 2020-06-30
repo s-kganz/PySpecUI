@@ -1,24 +1,23 @@
+# -- Set config options --
 from kivy import Config
 Config.set('graphics', 'minimum_width', '300')
 Config.set('graphics', 'minimum_height', '500')
 Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
 
+# -- Core kivy modules --
 from kivy.app import App
-from kivy.uix.stacklayout import StackLayout
+from kivy.uix.floatlayout import FloatLayout
 from kivy.properties import ObjectProperty
 from kivy.uix.button import Button
-from kivy.uix.treeview import TreeViewNode
+from kivy.uix.treeview import TreeViewNode, TreeViewLabel
+from kivy_garden.graph import MeshLinePlot, Graph
 
-from kivy_garden.graph import MeshLinePlot
-
+# -- Other python modules --
 import numpy as np
 
-class TreeViewButton(Button, TreeViewNode):
-    '''
-    Helper widget to add buttons to a tree view.
-    '''
+# -- Namespace modules --
 
-class MyLayout(StackLayout):
+class MyLayout(FloatLayout):
     '''
     Custom layout built off of a stack layout.
     '''
