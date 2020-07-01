@@ -3,12 +3,27 @@
 #: import TreeViewLabel kivy.uix.treeview.TreeViewLabel
 #: import AppMenu kivy_garden.contextmenu
 #: import ContextMenu kivy_garden.contextmenu
-#: import ContextMenuTextItem kivy_garden.contextmenu
+#: import ContextMenuTextItem kivy_garden.contextmenu    
 
+<TreeViewPlottable>:
+    check: check
+    text: 'An unnamed spectrum.' # Set during instantiation
+    height: 30
+    spacing: 10
+    CheckBox:
+        id: check
+        on_active: self.parent.send_plot_message() # pubsub is not defined here
+        size_hint_x: None
+        width: 15
+    Label:
+        text: self.parent.text
+        size_hint_x: None
+        width: self.texture_size[0]
+    
 # Root widget of the application
 <MyLayout>:
     # Make widgets important for application logic accessible
-    hierarchy: hierarchy
+    tree: hierarchy
     graph: graph
     
     # Container for everything that isn't the app menu
@@ -39,11 +54,11 @@
                 BoxLayout:
                     orientation: 'vertical'
                     Button:
-                        text: 'Additional plot information goes here'
-                        on_press: hierarchy.add_node(TreeViewLabel(text="New Node"))
+                        text: "test button"
+                        on_press: print()
                     Button:
                         text: 'Make a plot'
-                        on_press: root.create_random_plot()
+                        on_press: root.tree.add_spectrum()
                     Button:
                         text: 'Clear'
                         on_press: root.clear_all_plots()
@@ -60,9 +75,8 @@
                     id: hierarchy_tab
                     text: 'Hierarchy'
                     ScrollView:
-                        do_scroll_x: False
                         scroll_wheel_distance: 30
-                        TreeView:
+                        DataTreeView:
                             hide_root: True
                             id: hierarchy
                             # Set these two properties to enable scrolling
@@ -72,8 +86,10 @@
                 TabbedPanelItem:
                     id: drawing_tab
                     text: 'Drawing'
-                    Label: 
-                        text: "Something something color picker"
+                    ScrollView:
+                        scroll_wheel_distance: 30
+                        Label: 
+                            text: "Something something color picker"
                 # View files in the project directory
                 TabbedPanelItem:
                     id: directory_tab
