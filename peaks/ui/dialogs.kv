@@ -1,0 +1,59 @@
+#: kivy 1.11.1
+#: set PARAMETER_HEIGHT 30
+
+<AbstractParameterWidget@BoxLayout>:
+    size_hint_y: None
+    height: PARAMETER_HEIGHT
+    BoxLayout:
+        size_hint_y: None
+        height: max(PARAMETER_HEIGHT, label.height)
+        id: layout
+        orientation: 'horizontal'
+        Label:
+            size_hint_y: None
+            height: self.texture_size[1]
+            id: label
+            text: root.label_text
+            text_size: self.width, None
+            padding_x: 5
+
+<DialogPopup@Popup>:
+    _content_area: content_area
+    size_hint: None, None
+    size: 400, 600
+    title: 'A dialog.'
+    auto_dismiss: False
+    BoxLayout:
+        padding: 5
+        spacing: 5
+        orientation: 'vertical'
+        ScrollView:
+            id: scroll
+            height: max(self.parent.height*.9, self.parent.height - 30)
+            do_scroll_y: True
+            GridLayout:
+                height: self.minimum_height
+                id: content_area
+                orientation: 'vertical'
+                size_hint_y: None
+                cols: 1
+                spacing: 5
+                IntegerParameterWidget:
+                FloatParameterWidget:
+                TextParameterWidget:
+
+        StackLayout:
+            orientation: 'rl-tb'
+            spacing: 5
+            size_hint_y: None
+            height: min(self.parent.height*.1, 30)
+            Button:
+                size_hint_x: None
+                width: 60
+                text: 'Cancel'
+                on_release: root.dismiss()
+            Button:
+                size_hint_x: None
+                width: 60
+                text: 'OK'
+                on_release: root.dismiss()

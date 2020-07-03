@@ -5,6 +5,8 @@
 #: import ContextMenu kivy_garden.contextmenu
 #: import ContextMenuTextItem kivy_garden.contextmenu    
 
+#: include dialogs.kv
+
 <TreeViewPlottable>:
     check: check
     text: 'An unnamed spectrum.' # Set during instantiation
@@ -55,7 +57,7 @@
                     orientation: 'vertical'
                     Button:
                         text: "test button"
-                        on_press: print()
+                        on_press: root.create_popup()
                     Button:
                         text: 'Make a plot'
                         on_press: root.tree.add_spectrum()

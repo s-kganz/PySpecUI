@@ -20,6 +20,7 @@ import random
 
 # -- Namespace modules --
 from peaks.data.spectrum import Spectrum, Trace
+import peaks.ui.dialogs as dialogs
 
 class TreeViewPlottable(TreeViewNode, BoxLayout):
     '''
@@ -98,6 +99,9 @@ class MyLayout(FloatLayout):
         Remove a trace object from the plot.
         '''
         self.graph.remove_plot(trace)
+    
+    def create_popup(self):
+        dialogs.DialogPopup().open()
         
 
 class PySpecApp(App):
