@@ -4,6 +4,9 @@
 #: import AppMenu kivy_garden.contextmenu
 #: import ContextMenu kivy_garden.contextmenu
 #: import ContextMenuTextItem kivy_garden.contextmenu    
+#: import Factory kivy.factory.Factory
+
+#: include dialogs.kv
 
 #: include dialogs.kv
 
@@ -57,7 +60,7 @@
                     orientation: 'vertical'
                     Button:
                         text: "test button"
-                        on_press: root.create_popup()
+                        on_release: Factory.TestDialog(title="Parameter test dialog.").open()
                     Button:
                         text: 'Make a plot'
                         on_press: root.tree.add_spectrum()

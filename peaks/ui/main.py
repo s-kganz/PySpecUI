@@ -11,6 +11,8 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.properties import ObjectProperty, StringProperty
 from kivy.uix.button import Button
 from kivy.uix.treeview import TreeViewNode, TreeViewLabel, TreeView
+from kivy.uix.popup import Popup
+from kivy.factory import Factory
 from kivy_garden.graph import MeshLinePlot, Graph
 
 # -- Other python modules --
@@ -57,6 +59,9 @@ class DataTreeView(TreeView):
         self.add_node(TreeViewPlottable(s), parent=self.headers[0])
 
     def populate_nodes(self):
+        '''
+        Set up primary headers.
+        '''
         for header in ["Spectra", "Models", "Tool Chains"]:
             node = self.add_node(TreeViewLabel(text=header))
             self.headers.append(node)

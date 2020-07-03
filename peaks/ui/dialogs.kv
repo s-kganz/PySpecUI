@@ -3,10 +3,8 @@
 
 <AbstractParameterWidget@BoxLayout>:
     size_hint_y: None
-    height: PARAMETER_HEIGHT
+    height: max(PARAMETER_HEIGHT, label.height)
     BoxLayout:
-        size_hint_y: None
-        height: max(PARAMETER_HEIGHT, label.height)
         id: layout
         orientation: 'horizontal'
         Label:
@@ -17,12 +15,7 @@
             text_size: self.width, None
             padding_x: 5
 
-<DialogPopup@Popup>:
-    _content_area: content_area
-    size_hint: None, None
-    size: 400, 600
-    title: 'A dialog.'
-    auto_dismiss: False
+<Dialog@Popup>:
     BoxLayout:
         padding: 5
         spacing: 5
@@ -38,9 +31,7 @@
                 size_hint_y: None
                 cols: 1
                 spacing: 5
-                IntegerParameterWidget:
-                FloatParameterWidget:
-                TextParameterWidget:
+                # ** widgets added here during instantiation **
 
         StackLayout:
             orientation: 'rl-tb'
@@ -56,4 +47,4 @@
                 size_hint_x: None
                 width: 60
                 text: 'OK'
-                on_release: root.dismiss()
+                on_release: root.dismiss(); root._execute()
