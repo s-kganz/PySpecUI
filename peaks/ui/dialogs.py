@@ -7,6 +7,8 @@ from kivy.factory import Factory
 from kivy.uix.textinput import TextInput
 from kivy.clock import Clock
 
+import os
+
 # Widget classes
 class AbstractParameterWidget(BoxLayout):
     '''
@@ -99,10 +101,47 @@ class ChoiceParameterWidget(AbstractParameterWidget):
     def get_parameter_value(self):
         return self.field.text
 
-class Dialog(Popup):
+class FileFieldWidget(BoxLayout):
     '''
-    Base class for all popups in the application.
+    Helper class for file selection implementing a field
+    to display the selected field and a button to launch
+    a file selection dialog.
     '''
+    text_field = ObjectProperty(None)
+
+    def __init__(self, *args, **kwargs):
+        self.max_chars = 30
+        super().__init__(*args, **kwargs)
+    
+    def get_value(self):
+        return self.text_field.text
+
+
+class FileParameterWidget(AbstractParameterWidget):
+    '''
+    A widget for opening a dialog for selecting a file.
+    '''
+    def __init__(self, label_text="A file", **kwargs):
+        self.label_text = label_text
+        super().__init__(**kwargs)
+        Clock.schedule_once(self.add_field_widget)
+    
+    def add_field_widget(self, *args):
+        w = FileFieldWidget()
+        self.field = w
+        self.ids['layout'].add_widget(w)
+    
+    def get_parameter_value(self):
+        return self.field.get_value()
+
+    
+class ParameterListDialog(Popup):
+    '''
+    Popup with a scroll view of classes derived from
+    AbstractParameterWidget
+    '''
+    button_ok = ObjectProperty(None)
+    
     def __init__(self, *args, **kwargs):
         defaults = dict(
             size_hint = (None, None),
@@ -150,7 +189,33 @@ class Dialog(Popup):
         '''
         raise NotImplementedError("Tool execution must be defined.")
 
-class TestDialog(Dialog):
+class LoadDialog(Popup):
+    '''
+    Dialog for selecting a file.
+    '''
+    callback = ObjectProperty(None)
+    filechooser = ObjectProperty(None)
+
+    def __init__(self, callback, *args, **kwargs):
+        self.callback = callback
+        defaults = dict(
+            size_hint = (None, None),
+            size = (600, 400),
+            title = 'Select a file:',
+            auto_dismiss = False
+        )
+        defaults.update(**kwargs)
+        super().__init__(*args, **defaults)
+    
+    def post_result(self):
+        try:
+            f = self.filechooser.selection[0]
+        except IndexError:
+            f = ''
+        path = os.path.join(self.filechooser.path, f)
+        self.callback.text = path
+
+class TestDialog(ParameterListDialog):
     '''
     Dialog that creates a parameter of each type in the application
     and prints the value associated with each parameter.
@@ -160,12 +225,48 @@ class TestDialog(Dialog):
             TextParameterWidget(),
             IntegerParameterWidget(),
             FloatParameterWidget(),
-            ChoiceParameterWidget()
+            ChoiceParameterWidget(),
+            FileParameterWidget()
         ]
     
     def execute(self, parameters):
         for idx, val in enumerate(parameters):
             print("Parameter {}:\t{}".format(idx, val))
 
+class SingleFileLoadDialog(ParameterListDialog):
+    '''
+    Dialog for loading a single delimited file from the file.
+    '''
+    def define_parameters(self):
+        return [
+            FileParameterWidget(
+                label_text="File to load:"
+            ),
+            IntegerParameterWidget(
+                label_text='Frequency column index:'
+            ),
+            IntegerParameterWidget(
+                label_text='Spectral column index:'
+            ),
+            TextParameterWidget(
+                label_text='Frequency unit:'
+            ),
+            TextParameterWidget(
+                label_text='Spectral unit:'
+            ),
+            TextParameterWidget(
+                label_text='Comment character:'
+            ),
+            IntegerParameterWidget(
+                label_text='Lines to skip:'
+            )
+        ]
+    
+    def execute(self, parameters):
+        for idx, val in enumerate(parameters):
+            print("Paramter {}: {}".format(idx, val))
+
 # Register dialogs in the factory
 Factory.register('TestDialog', cls=TestDialog)
+Factory.register('LoadDialog', cls=LoadDialog)
+Factory.register('SingleFileLoadDialog', cls=SingleFileLoadDialog)

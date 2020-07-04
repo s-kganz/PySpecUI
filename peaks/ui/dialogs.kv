@@ -1,5 +1,20 @@
 #: kivy 1.11.1
 #: set PARAMETER_HEIGHT 30
+#: import expanduser os.path.expanduser
+
+<FileFieldWidget@BoxLayout>:
+    text_field: text_field
+    BoxLayout:
+        orientation: 'horizontal'
+        spacing: 5
+        TextInput:
+            id: text_field
+            readonly: True
+        Button:
+            size_hint_x: None
+            width: PARAMETER_HEIGHT
+            text: '...'
+            on_release: Factory.LoadDialog(text_field).open()
 
 <AbstractParameterWidget@BoxLayout>:
     size_hint_y: None
@@ -15,7 +30,8 @@
             text_size: self.width, None
             padding_x: 5
 
-<Dialog@Popup>:
+<ParameterListDialog@Popup>:
+    button_ok: button_ok
     BoxLayout:
         padding: 5
         spacing: 5
@@ -44,7 +60,36 @@
                 text: 'Cancel'
                 on_release: root.dismiss()
             Button:
+                id: button_ok
                 size_hint_x: None
                 width: 60
                 text: 'OK'
                 on_release: root.dismiss(); root._execute()
+
+<LoadDialog@Popup>:
+    filechooser: filechooser
+    BoxLayout:
+        size: root.size
+        pos: root.pos
+        orientation: "vertical"
+        FileChooserListView:
+            id: filechooser
+            dirselect: False
+            path: expanduser('~')
+
+        StackLayout:
+            orientation: 'rl-tb'
+            spacing: 5
+            size_hint_y: None
+            height: min(self.parent.height*.1, 30)
+            Button:
+                size_hint_x: None
+                width: 60
+                text: 'Cancel'
+                on_release: root.dismiss()
+            Button:
+                id: button_ok
+                size_hint_x: None
+                width: 60
+                text: 'OK'
+                on_release: root.post_result(); root.dismiss()
