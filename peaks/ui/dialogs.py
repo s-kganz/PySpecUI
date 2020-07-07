@@ -8,6 +8,7 @@ from kivy.uix.textinput import TextInput
 from kivy.clock import Clock
 
 import os
+from pubsub import pub
 
 # Widget classes
 class AbstractParameterWidget(BoxLayout):
@@ -15,17 +16,23 @@ class AbstractParameterWidget(BoxLayout):
     Abstract parameter widget defining the interface
     that all other widgets must adhere to.
     '''
-    label_text = ''
     field = ObjectProperty(None)
-    def get_parameter_value(self):
+    def __init__(self, label_text='', param_name='', **kwargs):
+        self.label_text = label_text
+        self.param_name = param_name
+        super().__init__(**kwargs)
+    
+    def get_parameter_tuple(self):
+        return self.param_name, self._get_parameter_value()
+
+    def _get_parameter_value(self):
         raise NotImplementedError("Parameter must define get_value()")
 
 class IntegerParameterWidget(AbstractParameterWidget):
     '''
     A text field allowing numeric characters only.
     '''
-    def __init__(self, label_text='An integer:', **kwargs):
-        self.label_text = label_text
+    def __init__(self, *args, **kwargs):
         super().__init__(**kwargs)
         Clock.schedule_once(self.add_field_widget)
 
@@ -37,15 +44,14 @@ class IntegerParameterWidget(AbstractParameterWidget):
         self.field = w
         self.ids['layout'].add_widget(w)
     
-    def get_parameter_value(self):
+    def _get_parameter_value(self):
         return int(self.field.text) if len(self.field.text) > 0 else None
 
 class FloatParameterWidget(AbstractParameterWidget):
     '''
     A text field allowing numeric input and one decimal point.
     '''
-    def __init__(self, label_text='A floating point number', **kwargs):
-        self.label_text = label_text
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
         Clock.schedule_once(self.add_field_widget)
     
@@ -57,15 +63,14 @@ class FloatParameterWidget(AbstractParameterWidget):
         self.field = w
         self.ids['layout'].add_widget(w)
     
-    def get_parameter_value(self):
+    def _get_parameter_value(self):
         return float(self.field.text) if len(self.field.text) > 0 else None
     
 class TextParameterWidget(AbstractParameterWidget):
     '''
     A general text input.
     '''
-    def __init__(self, label_text='Some text', **kwargs):
-        self.label_text = label_text
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
         Clock.schedule_once(self.add_field_widget)
     
@@ -76,15 +81,14 @@ class TextParameterWidget(AbstractParameterWidget):
         self.field = w
         self.ids['layout'].add_widget(w)
 
-    def get_parameter_value(self):
+    def _get_parameter_value(self):
         return self.field.text
 
 class ChoiceParameterWidget(AbstractParameterWidget):
     '''
     A widget for a dropdown menu of choices.
     '''
-    def __init__(self, choices=['1', '2', '3'], label_text='Choices', **kwargs):
-        self.label_text = label_text
+    def __init__(self, choices, **kwargs):
         self.choices = choices
         super().__init__(**kwargs)
         Clock.schedule_once(self.add_field_widget)
@@ -98,7 +102,7 @@ class ChoiceParameterWidget(AbstractParameterWidget):
         self.ids['layout'].add_widget(w)
         del self.choices
 
-    def get_parameter_value(self):
+    def _get_parameter_value(self):
         return self.field.text
 
 class FileFieldWidget(BoxLayout):
@@ -121,8 +125,7 @@ class FileParameterWidget(AbstractParameterWidget):
     '''
     A widget for opening a dialog for selecting a file.
     '''
-    def __init__(self, label_text="A file", **kwargs):
-        self.label_text = label_text
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
         Clock.schedule_once(self.add_field_widget)
     
@@ -131,7 +134,7 @@ class FileParameterWidget(AbstractParameterWidget):
         self.field = w
         self.ids['layout'].add_widget(w)
     
-    def get_parameter_value(self):
+    def _get_parameter_value(self):
         return self.field.get_value()
 
     
@@ -167,12 +170,11 @@ class ParameterListDialog(Popup):
         Gather all parameter widgets from the content area and pass
         to execution function.
         '''
-        param_values = list(
-            map(lambda p: p.get_parameter_value(),
-                self.ids['content_area'].children)
-        ) 
+        param_values = {
+            name:value for (name, value) in \
+            map(lambda p: p.get_parameter_tuple(), self.ids['content_area'].children)
+        } 
         # Children is a stack, reverse to keep in instantiation order
-        param_values.reverse()
         self.execute(param_values)
 
     def define_parameters(self):
@@ -222,16 +224,32 @@ class TestDialog(ParameterListDialog):
     '''
     def define_parameters(self):
         return [
-            TextParameterWidget(),
-            IntegerParameterWidget(),
-            FloatParameterWidget(),
-            ChoiceParameterWidget(),
-            FileParameterWidget()
+            TextParameterWidget(
+                label_text='Some text:',
+                param_name='text'
+            ),
+            IntegerParameterWidget(
+                label_text='An integer:',
+                param_name='int'
+            ),
+            FloatParameterWidget(
+                label_text='A float:',
+                param_name='float'
+            ),
+            ChoiceParameterWidget(
+                ['1', '2', '3'],
+                label_text='A choice:',
+                param_name='choice'
+            ),
+            FileParameterWidget(
+                label_text='A file',
+                param_name='file'
+            )
         ]
     
     def execute(self, parameters):
-        for idx, val in enumerate(parameters):
-            print("Parameter {}:\t{}".format(idx, val))
+        for key in parameters:
+            print("Parameter {:<10}: {}".format(key, parameters[key]))
 
 class SingleFileLoadDialog(ParameterListDialog):
     '''
@@ -240,31 +258,42 @@ class SingleFileLoadDialog(ParameterListDialog):
     def define_parameters(self):
         return [
             FileParameterWidget(
-                label_text="File to load:"
+                label_text="File to load:",
+                param_name='file'
+            ),
+            ChoiceParameterWidget(
+                ['Space', 'Comma', 'Tab'],
+                label_text='Delimiter:',
+                param_name='delimChoice'
             ),
             IntegerParameterWidget(
-                label_text='Frequency column index:'
+                label_text='Frequency column index:',
+                param_name='freqCol'
             ),
             IntegerParameterWidget(
-                label_text='Spectral column index:'
+                label_text='Spectral column index:',
+                param_name='specCol'
             ),
             TextParameterWidget(
-                label_text='Frequency unit:'
+                label_text='Frequency unit:',
+                param_name='freqUnit'
             ),
             TextParameterWidget(
-                label_text='Spectral unit:'
+                label_text='Spectral unit:',
+                param_name='specUnit'
             ),
             TextParameterWidget(
-                label_text='Comment character:'
+                label_text='Comment character:',
+                param_name='commentChar'
             ),
             IntegerParameterWidget(
-                label_text='Lines to skip:'
+                label_text='Lines to skip:',
+                param_name='skipCount'
             )
         ]
     
     def execute(self, parameters):
-        for idx, val in enumerate(parameters):
-            print("Paramter {}: {}".format(idx, val))
+        pub.sendMessage('Data.LoadCSV', options=parameters)
 
 # Register dialogs in the factory
 Factory.register('TestDialog', cls=TestDialog)
