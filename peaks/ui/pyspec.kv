@@ -61,7 +61,7 @@
                         on_release: Factory.TestDialog(title="Parameter test dialog.").open()
                     Button:
                         text: 'Make a plot'
-                        on_press: root.tree.add_spectrum()
+                        on_press: root.tree._create_fake_data()
                     Button:
                         text: 'Clear'
                         on_press: root.clear_all_plots()

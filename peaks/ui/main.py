@@ -13,15 +13,18 @@ from kivy.uix.button import Button
 from kivy.uix.treeview import TreeViewNode, TreeViewLabel, TreeView
 from kivy.uix.popup import Popup
 from kivy.factory import Factory
+from kivy.clock import Clock
 from kivy_garden.graph import MeshLinePlot, Graph
 
 # -- Other python modules --
 import numpy as np
 from pubsub import pub
 import random
+import concurrent
 
 # -- Namespace modules --
 from peaks.data.spectrum import Spectrum, Trace
+from peaks.data.datasource import DataSource
 import peaks.ui.dialogs as dialogs
 
 class TreeViewPlottable(TreeViewNode, BoxLayout):
@@ -52,13 +55,20 @@ class DataTreeView(TreeView):
     '''
     headers = []
 
-    def add_spectrum(self):
-        x = np.linspace(1, 100, num=100)
-        y = np.sin(x) * 2 + np.random.normal(0, 1, len(x))
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._populate_nodes()
+
+    def _create_fake_data(self, n_points=1000):
+        x = np.linspace(0, 100, num=n_points)
+        y = np.sin(x) * 3 + np.random.normal(0, 1, n_points)
         s = Spectrum.FromArrays(x, y)
+        self.add_spectrum(s)
+
+    def add_spectrum(self, s):
         self.add_node(TreeViewPlottable(s), parent=self.headers[0])
 
-    def populate_nodes(self):
+    def _populate_nodes(self):
         '''
         Set up primary headers.
         '''
@@ -104,16 +114,54 @@ class MyLayout(FloatLayout):
         Remove a trace object from the plot.
         '''
         self.graph.remove_plot(trace)
-    
-    def create_popup(self):
-        dialogs.DialogPopup().open()
         
 
 class PySpecApp(App):
+    def __init__(self):
+        super().__init__()
+        self.ds = DataSource()
+        self.executor = concurrent.futures.ThreadPoolExecutor()
+        self._thread_future = None
+        self._thread_clock_event = None
+        # subscribe member functions
+        pub.subscribe(self.load_csv, 'Data.LoadCSV')
+
     def build(self):
         layout = MyLayout()
-        layout.tree.populate_nodes()
         return layout
+
+    def _launch_in_thread(self, caller):
+        if self._thread_future is None or not self._thread_future.running():
+            self._thread_future = self.executor.submit(
+                caller
+            )
+            self._thread_clock_event = Clock.schedule_interval(
+                self._check_thread_status, 0.5
+            )
+        else:
+            print("Another thread is currently running!")
+
+    def _check_thread_status(self, *args):
+        if not self._thread_future.done(): return
+        else:
+            Clock.unschedule(self._thread_clock_event)
+            e = self._thread_future.exception()
+            if e is not None:
+                raise e
+            else:
+                print(self._thread_future.result())
+
+    def _ingest_thread_result(self, data):
+        if isinstance(data, Spectrum):
+            self.tree.add_spectrum(data)
+        else:
+            print(data)
+
+    def load_csv(self, options={}):
+        self._launch_in_thread(lambda: self.ds.add_trace_from_csv(options))
+        
+    
 
 if __name__ == '__main__':
     PySpecApp().run()
+    pub.exportTopicTreeSpec('test')
