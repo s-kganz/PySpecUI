@@ -49,41 +49,41 @@ class Model(object):
         self.trace = None # The prediction this model makes on the frequency domain
                           # of the spectrum.
 
-    def Fit(self, params):
+    def fit(self, params):
         '''
         Do final fitting procedure, using the passed parameters as an estimate
         of the true parameters.
         '''
         raise NotImplementedError("Fitting procedure must be defined!")
 
-    def Predict(self, domain):
+    def predict(self, domain):
         '''
         Evaluate a well-defined model over a certain domain.
         '''
         raise NotImplementedError("Model prediction must be defined!")
 
-    def EvalModel(self, params=None):
+    def evaluate_model(self, params=None):
         '''
         Evaluate the model on its own domain, optionally specifying parameters to use
         instead of those retained by a .Fit() call.
         '''
         raise NotImplementedError("Model evaluation must be defined!")
 
-    def ParamGuess(self):
+    def guess_parameters(self):
         '''
         Estimate the parameters of the true model. The output of this function should
         be inspected and then passed to .Fit() to generate the final, tuned model.
         '''
         raise NotImplementedError("Model parameter estimation must be defined!")
     
-    def GetTunerParameters(self):
+    def get_tuner_parameters(self):
         '''
         After self.paramters has been set, return a dictionary with meaningful labels
         so that a tuner window can create a meaningful interface for tweaking the model.
         '''
         raise NotImplementedError("")
 
-    def SetTunerParameters(self):
+    def set_tuner_parameters(self):
         '''
         Facilitate communication with tuner windows by accepting a rolled-up dictionary
         of model parameters, setting the object's internal parameters, and recalculating
@@ -105,14 +105,14 @@ class ModelGauss(Model, Trace):
         self.id = id
 
     @staticmethod
-    def Gauss(x, a, mu, sigma):
+    def gauss(x, a, mu, sigma):
         '''
         Create a Gaussian distribution centered around mu over the domain
         given by x.
         '''
         return a*np.exp(-(x-mu)**2/(2*sigma**2))
 
-    def EvalModel(self, params=None):
+    def evaluate_model(self, params=None):
         '''
         Generate a model over the given parameters on the domain
         specified by the model's spectrum object. If no parameters
@@ -129,11 +129,11 @@ class ModelGauss(Model, Trace):
 
         ret = np.zeros(len(x))
         for i in range(0, len(params), 3):
-            ret += self.Gauss(x, params[i], params[i+1], params[i+2])
+            ret += self.gauss(x, params[i], params[i+1], params[i+2])
 
         return ret
 
-    def ParamGuess(self, polyorder=2, winlen=None, peak_range=(0, None)):
+    def guess_parameters(self, polyorder=2, winlen=None, peak_range=(0, None)):
         '''
         Guess gaussian peak parameters from minima in the second derivative.
 
@@ -208,37 +208,32 @@ class ModelGauss(Model, Trace):
 
         return accepted
 
-    def Fit(self, params):
+    def fit(self, params):
         '''
         Tune passed set of parameters with an optimizer. Returns a Boolean
         indicating whether fitting was successful.
         '''
         true_signal = self.spectrum.gety()
         fit_result = least_squares(
-            lambda p: self.EvalModel(p) - true_signal,
+            lambda p: self.evaluate_model(p) - true_signal,
             params,
             bounds=(0, np.inf),  # nothing should be below 0
             method='trf')
 
         self.params = fit_result['x']
-        self.trace = self.EvalModel()
+        self.trace = self.evaluate_model()
         return True
 
-    def Predict(self, x):
+    def predict(self, x):
         '''
         Extract a section of or extrapolate this model to a custom domain.
         '''
         if not self.params:
-            pub.sendMessage(
-                'Logging.Error',
-                caller='ModelGauss.Predict',
-                msg="The model's parameters must be set by a .Fit() call before doing a prediction."
-            )
             return
         ret = np.zeros(len(x))
 
         for i in range(0, len(self.params), 3):
-            ret += self.Gauss(x, params[i], params[i+1], params[i+2])
+            ret += self.gauss(x, params[i], params[i+1], params[i+2])
 
         return ret
     
@@ -256,11 +251,6 @@ class ModelGauss(Model, Trace):
         may be called many times by plotting functions.
         '''
         if self.trace is None:
-            pub.sendMessage(
-                'Logging.Error',
-                caller='ModelGauss.gety',
-                msg="Model has not been fully fitted, cannot plot."
-            )
             return
 
         return self.trace
@@ -272,7 +262,7 @@ class ModelGauss(Model, Trace):
         return "{} ({})".format(self.spectrum.name, self.model_name)
     
     # Tuner communication functions
-    def GetTunerParameters(self):
+    def get_tuner_parameters(self):
         '''
         Roll up current model parameters into a labeled dictionary for display
         in a tuner window.
@@ -293,7 +283,7 @@ class ModelGauss(Model, Trace):
         # sort by mu so that peak n corresponds to peak n to the viewer
         return sorted(ret, key=lambda x: x['mu'])
 
-    def SetTunerParameters(self, newparams):
+    def set_tuner_parameters(self, newparams):
         '''
         Receive a set of model parameters from a tuner and set the model object's
         properties and trace.
@@ -303,7 +293,7 @@ class ModelGauss(Model, Trace):
         
         # Re-evaluate the trace
         self.params = newparams.copy() # everything should be a float so deepcopy isn't necessary
-        self.trace = self.EvalModel()
+        self.trace = self.evaluate_model()
 
     def __str__(self):
         return self.label()
@@ -321,7 +311,3 @@ def ExecModel(M, spec, params={}):
             model=m
         )
         pub.sendMessage('UI.SetStatus', text='Done.')
-    
-    pub.sendMessage('StartToolThread', callback=lambda: run(M, spec, params))
-
-pub.subscribe(ExecModel, 'Data.Model.Create')
