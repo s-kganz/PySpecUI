@@ -41,11 +41,20 @@ class TreeViewPlottable(TreeViewNode, BoxLayout):
         # Make a plot
         self.plot = MeshLinePlot(color=[random.random(), random.random(), random.random(), 1])
         self.plot.points = zip(self.trace.getx(), self.trace.gety())
-        self.text = 'd{}ta'.format('a' * random.choice(range(1, 25)))
+        self.text = str(obj)
     
     def send_plot_message(self):
+        '''
+        Called when the checkbox status changes. If the checkbox
+        became active, send the MeshLinePlot to the plot window. Otherwise,
+        remove the plot from the window.
+        '''
         if self.check.active:
-            pub.sendMessage('Plot.AddPlot', trace=self.plot)
+            # The bounds of the graph on the y axis a little fuzzy, so padding
+            # 10% ensures all data will be in view.
+            xmax, ymax = int(self.trace.getx().max()), \
+                         int(self.trace.gety().max() * 1.1)
+            pub.sendMessage('Plot.AddPlot', trace=self.plot, xmax=xmax, ymax=ymax)
         else:
             pub.sendMessage('Plot.RemovePlot', trace=self.plot)
 
@@ -58,15 +67,31 @@ class DataTreeView(TreeView):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._populate_nodes()
+        pub.subscribe(self.uncheck_all, 'Plot.RemoveAll')
 
     def _create_fake_data(self, n_points=1000):
+        '''
+        Test function : make a simple sinusoid and add it to the
+        tree.
+        '''
         x = np.linspace(0, 100, num=n_points)
         y = np.sin(x) * 3 + np.random.normal(0, 1, n_points)
         s = Spectrum.FromArrays(x, y)
         self.add_spectrum(s)
 
     def add_spectrum(self, s):
+        '''
+        Add a spectrum to the tree.
+        '''
         self.add_node(TreeViewPlottable(s), parent=self.headers[0])
+    
+    def uncheck_all(self):
+        '''
+        Uncheck all plottable nodes.
+        '''
+        for n in self.iterate_all_nodes():
+            if isinstance(n, TreeViewPlottable):
+                n.check.active = False
 
     def _populate_nodes(self):
         '''
@@ -88,25 +113,24 @@ class MyLayout(FloatLayout):
         super(MyLayout, self).__init__(*args, **kwargs)
         pub.subscribe(self.add_plot, 'Plot.AddPlot')
         pub.subscribe(self.remove_plot, 'Plot.RemovePlot')
-
-    def create_random_plot(self):
-        plot = MeshLinePlot(color=[1, 0, 0, 1])
-        x = np.linspace(1, 100, num=100)
-        y = np.sin(x) * 2 + np.random.normal(0, 1, len(x))
-        plot.points = [(a,b) for (a,b) in zip(x, y)]
-        self.meshes.append(plot)
-
-        self.graph.add_plot(plot)
+        pub.subscribe(self.clear_all_plots, 'Plot.RemoveAll')
 
     def clear_all_plots(self):
+        '''
+        Remove all meshes in the plotting window.
+        '''
         meshes = self.graph.plots.copy()
         for mesh in meshes:
             self.graph.remove_plot(mesh)
             
-    def add_plot(self, trace=None):
+    def add_plot(self, trace=None, xmax=0, ymax=0):
         '''
-        Add a new trace object to the plot
+        Add a new trace object to the plot, update graph limits to include
+        the entirety of the new data.
         '''
+        self.graph.xmax = max(xmax, self.graph.xmax)
+        self.graph.ymax = max(ymax, self.graph.ymax)
+
         self.graph.add_plot(trace)
     
     def remove_plot(self, trace=None):
@@ -114,6 +138,20 @@ class MyLayout(FloatLayout):
         Remove a trace object from the plot.
         '''
         self.graph.remove_plot(trace)
+    
+    def zoom_out(self):
+        '''
+        Zoom out the plot by a factor of two.
+        '''
+        self.graph.xmax *= 2
+        self.graph.ymax *= 2
+    
+    def zoom_in(self):
+        '''
+        Zoom in the plot by a factor of two
+        '''
+        self.graph.ymax /= 2
+        self.graph.xmax /= 2
         
 
 class PySpecApp(App):
@@ -127,10 +165,14 @@ class PySpecApp(App):
         pub.subscribe(self.load_csv, 'Data.LoadCSV')
 
     def build(self):
-        layout = MyLayout()
-        return layout
+        self.layout = MyLayout()
+        return self.layout
 
     def _launch_in_thread(self, caller):
+        '''
+        Submit a new task to the other thread if it is not already
+        busy. Might increase the number of threads in the future.
+        '''
         if self._thread_future is None or not self._thread_future.running():
             self._thread_future = self.executor.submit(
                 caller
@@ -142,26 +184,35 @@ class PySpecApp(App):
             print("Another thread is currently running!")
 
     def _check_thread_status(self, *args):
+        '''
+        Scheduled on the clock when a thread is running. Check if the
+        thread finished and ingests new data if available.
+        '''
         if not self._thread_future.done(): return
         else:
             Clock.unschedule(self._thread_clock_event)
-            e = self._thread_future.exception()
-            if e is not None:
-                raise e
+            # Check if the thread errored out
+            # TODO handle errors gracefully
+            maybe_e = self._thread_future.exception()
+            if maybe_e is not None:
+                raise maybe_e
             else:
-                print(self._thread_future.result())
+                self._ingest_thread_result(self._thread_future.result())
 
     def _ingest_thread_result(self, data):
+        # Add new data from the other thread into the
+        # application
         if isinstance(data, Spectrum):
-            self.tree.add_spectrum(data)
+            self.layout.tree.add_spectrum(data)
         else:
             print(data)
 
     def load_csv(self, options={}):
+        '''
+        Wrapper around the relevant function in DataSource
+        '''
         self._launch_in_thread(lambda: self.ds.add_trace_from_csv(options))
         
-    
-
 if __name__ == '__main__':
     PySpecApp().run()
     pub.exportTopicTreeSpec('test')

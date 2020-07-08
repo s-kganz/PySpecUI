@@ -6,6 +6,8 @@
 #: import ContextMenuTextItem kivy_garden.contextmenu    
 #: import Factory kivy.factory.Factory
 
+#: import pub pubsub.pub
+
 #: include dialogs.kv
 
 <TreeViewPlottable>:
@@ -32,6 +34,7 @@
     # Container for everything that isn't the app menu
     BoxLayout:
         height: root.height - app_menu.height
+        top: root.height - app_menu.height
         size_hint: 1, None
         orientation: 'vertical'
         # Space the graphing area and hierarchy on the left and right
@@ -56,15 +59,20 @@
                 # Graphing partner widgets
                 BoxLayout:
                     orientation: 'vertical'
-                    Button:
-                        text: "test button"
-                        on_release: Factory.TestDialog(title="Parameter test dialog.").open()
+                    BoxLayout:
+                        orientation: 'horizontal'
+                        Button:
+                            text: 'zoom in'
+                            on_release: root.zoom_in()
+                        Button:
+                            text: 'zoom out'
+                            on_release: root.zoom_out()
                     Button:
                         text: 'Make a plot'
                         on_press: root.tree._create_fake_data()
                     Button:
                         text: 'Clear'
-                        on_press: root.clear_all_plots()
+                        on_press: pub.sendMessage('Plot.RemoveAll')
             
             # View for data, directory, drawing
             TabbedPanel:
