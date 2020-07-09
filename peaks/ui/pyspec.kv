@@ -23,8 +23,8 @@
     Label:
         text: self.parent.text
         size_hint_x: None
-        width: self.texture_size[0]
-    
+        width: self.texture_size[0]    
+
 # Root widget of the application
 <MyLayout>:
     # Make widgets important for application logic accessible
@@ -48,14 +48,23 @@
                 # Sits inside a splitter so that everything remains resizable
                 Splitter:
                     sizable_from: 'bottom'
-                    Graph:
+                    MyGraph:
                         id: graph
                         border_color: [0, 0, 0, 0]
-                        background_color: [0.25, 0.25, 0.25, 1.0]
+                        background_color: [0.94, 0.94, 0.94, 1.0]
+                        label_options: {'color': (0.25, 0.25, 0.25, 1)}
+                        tick_color: (.75, .75, .75, 1)
                         xmin: 0
                         xmax: 100
                         ymin: -5
                         ymax: 5
+                        x_grid: True
+                        x_grid_label: True
+                        x_ticks_major: int(abs(self.xmax - self.xmin)) / 10
+                        y_grid: True 
+                        y_grid_label: True 
+                        y_ticks_major: int(abs(self.ymax - self.ymin)) / 10
+                        
                 # Graphing partner widgets
                 BoxLayout:
                     orientation: 'vertical'
@@ -63,10 +72,10 @@
                         orientation: 'horizontal'
                         Button:
                             text: 'zoom in'
-                            on_release: root.zoom_in()
+                            on_release: root.graph.zoom(factor=0.5)
                         Button:
                             text: 'zoom out'
-                            on_release: root.zoom_out()
+                            on_release: root.graph.zoom(factor=2)
                     Button:
                         text: 'Make a plot'
                         on_press: root.tree._create_fake_data()
