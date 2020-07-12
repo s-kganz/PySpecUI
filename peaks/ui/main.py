@@ -20,10 +20,12 @@ from kivy_garden.graph import MeshLinePlot, Graph
 import numpy as np
 from pubsub import pub
 import random
+import time
 import concurrent
 
 # -- Namespace modules --
 from peaks.data.spectrum import Spectrum, Trace
+from peaks.data.models import Model
 from peaks.data.datasource import DataSource
 import peaks.ui.dialogs as dialogs
 
@@ -85,6 +87,12 @@ class DataTreeView(TreeView):
         '''
         self.add_node(TreeViewPlottable(s), parent=self.headers[0])
     
+    def add_model(self, m):
+        '''
+        Add a model to the tree.
+        '''
+        self.add_node(TreeViewPlottable(m), parent=self.headers[1])
+
     def uncheck_all(self):
         '''
         Uncheck all plottable nodes.
@@ -121,8 +129,8 @@ class MyGraph(Graph):
         Add a new trace object to the plot, update graph limits to include
         the entirety of the new data.
         '''
-        super().add_plot(trace)
         self._update_envelope(trace)
+        super().add_plot(trace)
     
     def _remove_plot(self, trace=None):
         self.remove_plot(trace)
@@ -175,11 +183,11 @@ class PySpecApp(App):
     def __init__(self):
         super().__init__()
         self.ds = DataSource()
-        self.executor = concurrent.futures.ThreadPoolExecutor()
+        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         self._thread_future = None
         self._thread_clock_event = None
         # subscribe member functions
-        pub.subscribe(self.load_csv, 'Data.LoadCSV')
+        pub.subscribe(self._launch_in_thread, 'Data.StartThread')
 
     def build(self):
         self.layout = MyLayout()
@@ -202,34 +210,36 @@ class PySpecApp(App):
 
     def _check_thread_status(self, *args):
         '''
-        Scheduled on the clock when a thread is running. Check if the
-        thread finished and ingests new data if available.
-        '''
-        if not self._thread_future.done(): return
-        else:
-            Clock.unschedule(self._thread_clock_event)
-            # Check if the thread errored out
-            # TODO handle errors gracefully
+        Scheduled on the clock when a thread is running. This function
+        checks for new data posted from a thread in one of two ways:
+        either as a return value or as a posting to the data manager.
+        '''        
+        # If the queue is empty and the thread finished, unschedule
+        if self._thread_future.done():
+            # Thread either errored out or finished, see which
             maybe_e = self._thread_future.exception()
             if maybe_e is not None:
                 raise maybe_e
-            else:
-                self._ingest_thread_result(self._thread_future.result())
+            
+            # If all data has been ingested, we can unschedule
+            if self.ds._ingest_queue.empty():
+                Clock.unschedule(self._thread_clock_event)
+        # Check if data is posted
+        newdata = self.ds.get_next_task()
+        if newdata is not None:
+            self._ingest_thread_result(newdata)
+        
 
     def _ingest_thread_result(self, data):
         # Add new data from the other thread into the
         # application
         if isinstance(data, Spectrum):
             self.layout.tree.add_spectrum(data)
+        elif isinstance(data, Model):
+            self.layout.tree.add_model(data)
         else:
             print(data)
 
-    def load_csv(self, options={}):
-        '''
-        Wrapper around the relevant function in DataSource
-        '''
-        self._launch_in_thread(lambda: self.ds.add_trace_from_csv(options))
-        
 if __name__ == '__main__':
     PySpecApp().run()
     pub.exportTopicTreeSpec('test')

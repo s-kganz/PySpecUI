@@ -10,6 +10,9 @@ from kivy.clock import Clock
 import os
 from pubsub import pub
 
+from peaks.data.datasource import parse_csv
+from peaks.data.models import ModelGauss
+
 # Widget classes
 class AbstractParameterWidget(BoxLayout):
     '''
@@ -105,6 +108,20 @@ class ChoiceParameterWidget(AbstractParameterWidget):
     def _get_parameter_value(self):
         return self.field.text
 
+class SpectrumParameterWidget(ChoiceParameterWidget):
+    '''
+    A widget for a dropdown menu of spectra.
+    '''  
+    def __init__(self, ds, **kwargs):
+        self.choice_dict = {"{} ({})".format(str(s), s.id):s \
+                            for s in ds.get_all_spectra().values()}
+        if len(self.choice_dict) == 0:
+            self.choice_dict = {"No spectra loaded": None}
+        super().__init__(list(self.choice_dict.keys()), **kwargs)
+    
+    def _get_parameter_value(self):
+        return self.choice_dict[self.field.text]
+
 class FileFieldWidget(BoxLayout):
     '''
     Helper class for file selection implementing a field
@@ -145,7 +162,8 @@ class ParameterListDialog(Popup):
     '''
     button_ok = ObjectProperty(None)
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, datasource, *args, **kwargs):
+        self.ds = datasource
         defaults = dict(
             size_hint = (None, None),
             size = (400, 600),
@@ -174,8 +192,8 @@ class ParameterListDialog(Popup):
             name:value for (name, value) in \
             map(lambda p: p.get_parameter_tuple(), self.ids['content_area'].children)
         } 
-        # Children is a stack, reverse to keep in instantiation order
-        self.execute(param_values)
+        # Wrap the call in a lambda, start in own thread
+        pub.sendMessage('Data.StartThread', caller=lambda: self.execute(param_values))
 
     def define_parameters(self):
         '''
@@ -190,6 +208,9 @@ class ParameterListDialog(Popup):
         values in the same order as the list where parameters are defined.
         '''
         raise NotImplementedError("Tool execution must be defined.")
+
+    def post_data(self, data):
+        pub.sendMessage('Data.Post', data=data)
 
 class LoadDialog(Popup):
     '''
@@ -244,6 +265,11 @@ class TestDialog(ParameterListDialog):
             FileParameterWidget(
                 label_text='A file',
                 param_name='file'
+            ),
+            SpectrumParameterWidget(
+                self.ds,
+                label_text='A spectrum',
+                param_name='spectrum'
             )
         ]
     
@@ -288,14 +314,65 @@ class SingleFileLoadDialog(ParameterListDialog):
             ),
             IntegerParameterWidget(
                 label_text='Lines to skip:',
-                param_name='skipCount'
+                param_name='skipCount',
             )
         ]
     
     def execute(self, parameters):
-        pub.sendMessage('Data.LoadCSV', options=parameters)
+        spectrum = parse_csv(
+            delimChoice=parameters['delimChoice'],
+            skipCount=parameters['skipCount'],
+            freqCol=parameters['freqCol'],
+            specCol=parameters['specCol'],
+            commentChar=parameters['commentChar'],
+            freqUnit=parameters['freqUnit'],
+            specUnit=parameters['specUnit'],
+            file=parameters['file']
+        )
+        self.post_data(data=spectrum)
+
+class GaussModelDialog(ParameterListDialog):
+    '''
+    Dialog for creating a gaussian model of a spectrum.
+    '''
+    def define_parameters(self):
+        return [
+            SpectrumParameterWidget(
+                self.ds,
+                label_text='Spectrum to fit:',
+                param_name='spectrum'
+            ),
+            IntegerParameterWidget(
+                label_text='Minimum number of peaks:',
+                param_name='peak_min'
+            ),
+            IntegerParameterWidget(
+                label_text='Maximum number of peaks:',
+                param_name='peak_max'
+            ),
+            IntegerParameterWidget(
+                label_text="Savitsky-Golay polynomial order:",
+                param_name='poly_order'
+            ),
+            TextParameterWidget(
+                label_text='Model name:',
+                param_name='model_name'
+            )
+        ]
+    
+    def execute(self, parameters):
+        import time
+        time.sleep(5)
+        m = ModelGauss(parameters['spectrum'], None, name=parameters['model_name'])
+        guess = m.guess_parameters(**parameters)
+        try:
+            assert(m.fit(guess))
+        except AssertionError:
+            raise RuntimeError("Model fitting failed.")
+        self.post_data(data=m)
 
 # Register dialogs in the factory
 Factory.register('TestDialog', cls=TestDialog)
 Factory.register('LoadDialog', cls=LoadDialog)
 Factory.register('SingleFileLoadDialog', cls=SingleFileLoadDialog)
+Factory.register('GaussModelDialog', cls=GaussModelDialog)

@@ -7,6 +7,7 @@
 #: import Factory kivy.factory.Factory
 
 #: import pub pubsub.pub
+#: import sleep time.sleep
 
 #: include dialogs.kv
 
@@ -71,22 +72,24 @@
                     BoxLayout:
                         orientation: 'horizontal'
                         Button:
+                            text: 'test'
+                            on_release: Factory.TestDialog(app.ds).open()
+                        Button:
                             text: 'zoom in'
                             on_release: root.graph.zoom(factor=0.5)
                         Button:
                             text: 'zoom out'
                             on_release: root.graph.zoom(factor=2)
                     Button:
-                        text: 'Make a plot'
-                        on_press: root.tree._create_fake_data()
-                    Button:
                         text: 'Clear'
                         on_press: pub.sendMessage('Plot.RemoveAll')
+                    Label:
+                        text: 'drawing widgets'
             
             # View for data, directory, drawing
             TabbedPanel:
                 # Update this value with the number of tabs
-                tab_width: self.width / 3
+                tab_width: self.width / 2
                 id: tab_panel
                 default_tab: hierarchy_tab
                 size_hint_x: 0.5
@@ -102,20 +105,12 @@
                             # Set these two properties to enable scrolling
                             size_hint_y: None
                             height: self.minimum_height
-                # Widgets associated with drawing stuff
-                TabbedPanelItem:
-                    id: drawing_tab
-                    text: 'Drawing'
-                    ScrollView:
-                        scroll_wheel_distance: 30
-                        Label: 
-                            text: "Something something color picker"
                 # View files in the project directory
                 TabbedPanelItem:
                     id: directory_tab
                     text: "Directory"
-                    #FileChooserListView:
-                    #    multiselect: False
+                    FileChooserListView:
+                        multiselect: False
     
     # Main application menu
     # This needs to be the last widget in the root layout
@@ -129,9 +124,10 @@
             ContextMenu:
                 ContextMenuTextItem:
                     text: "Load delimited file..."
-                    on_release: Factory.SingleFileLoadDialog(title=self.text).open()
+                    on_release: Factory.SingleFileLoadDialog(app.ds, title=self.text).open()
                 ContextMenuTextItem:
-                    text: "Item 12"
+                    text: "Fit Gaussian peaks..."
+                    on_release: Factory.GaussModelDialog(app.ds, title=self.text).open()
         AppMenuTextItem:
             text: 'Fluff'
             ContextMenu:
