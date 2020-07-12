@@ -20,7 +20,7 @@ import asyncio
 # NAMESPACE MODULES
 from peaks.data.data_helpers import Trace
 
-__all__ = ['ModelGauss']
+__all__ = ['Model', 'ModelGauss']
 
 def r_squared(a, b):
     '''
@@ -96,12 +96,12 @@ class ModelGauss(Model, Trace):
     Model utilizing Gaussian peaks to fit spectra.
     '''
 
-    def __init__(self, spec, id):
+    def __init__(self, spec, id, name='Gaussian'):
         # Call the parents directly to ensure that they
         # actually get called
         Model.__init__(self, spec)
         Trace.__init__(self)
-        self.model_name = "Gaussian"
+        self.model_name = name
         self.id = id
 
     @staticmethod
@@ -133,22 +133,18 @@ class ModelGauss(Model, Trace):
 
         return ret
 
-    def guess_parameters(self, polyorder=2, winlen=None, peak_range=(0, None)):
+    def guess_parameters(self, poly_order=2, winlen=None, peak_min=0, peak_max=None, **kwargs):
         '''
         Guess gaussian peak parameters from minima in the second derivative.
 
         Returns a flat array of approximate peak parameters.
         '''
+        peak_range = peak_min, peak_max
         sig, xax = self.spectrum.gety(), self.spectrum.getx()
         try:
             assert(len(sig) == len(xax))
         except AssertionError as e:
-            pub.sendMessage(
-                'Logging.Error', 
-                caller='ModelGauss.ParamGuess', 
-                msg="Signal and frequency axes are not the same length."
-            )
-            return
+            raise ValueError('Spectral and frequency axes are not hte same length.')
         
         # Calculate savgol parameters
         delta = abs(xax[1] - xax[0])
@@ -158,7 +154,7 @@ class ModelGauss(Model, Trace):
             winlen += 1  # make sure the window is odd
 
         # Calculate second derivative
-        d2 = signal.savgol_filter(sig, winlen, polyorder, deriv=2, delta=delta)
+        d2 = signal.savgol_filter(sig, winlen, poly_order, deriv=2, delta=delta)
 
         # Find troughs in the signal by finding peaks in the negative derivative
         # Very rarely, small peaks show minima above the x-axis, so there is no
@@ -193,18 +189,10 @@ class ModelGauss(Model, Trace):
 
         # Raise an error if minimum number of peaks was not reached
         if len(accepted) // 3 < min_peaks:
-            pub.sendMessage(
-                'Logging.Error', 
-                caller='ModelGauss.ParamGuess', 
-                msg="Minimum number of peaks not reached ({} vs. min of {})".format(len(accepted), min_peaks)
-            )
+            raise RuntimeError('Minimum number of peaks not reached: {}'.format(min_peaks, len(accepted) // 3))
         # Raise an error if no peaks were found
         if len(accepted) == 0:
-            pub.sendMessage(
-                'Logging.Error',
-                caller='ModelGauss.ParamGuess',
-                msg='No peaks found.'
-            )
+            raise RuntimeError('No peaks found.')
 
         return accepted
 
@@ -254,12 +242,6 @@ class ModelGauss(Model, Trace):
             return
 
         return self.trace
-
-    def label(self):
-        '''
-        Legend label for when the model is plotted.
-        '''
-        return "{} ({})".format(self.spectrum.name, self.model_name)
     
     # Tuner communication functions
     def get_tuner_parameters(self):
@@ -296,18 +278,4 @@ class ModelGauss(Model, Trace):
         self.trace = self.evaluate_model()
 
     def __str__(self):
-        return self.label()
-
-def ExecModel(M, spec, params={}):
-    def run(M, spec, params):
-        m = M(spec, None) # pass a blank id for now, let the data manager set it
-        pub.sendMessage('UI.SetStatus', text='Fitting model {}...'.format(m.model_name))
-
-        if not m.Fit(m.ParamGuess(**params)):
-            return
-
-        pub.sendMessage(
-            'Data.AddModel',
-            model=m
-        )
-        pub.sendMessage('UI.SetStatus', text='Done.')
+        return self.model_name
