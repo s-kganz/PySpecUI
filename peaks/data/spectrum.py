@@ -16,7 +16,7 @@ class Spectrum(Trace):
     and other metadata.
     '''
 
-    def __init__(self, df, id, specunit="", frequnit="",
+    def __init__(self, df, id=None, specunit="", frequnit="",
                  name="", freqcol=0, speccol=None):
         
         super(Spectrum, self).__init__()
@@ -66,9 +66,11 @@ class Spectrum(Trace):
         return self.name
 
     def __str__(self):
-        return "{}: {:.1f}-{:.1f} {}".format(
+        return self.name
+
+        """ return "{}: {:.1f}-{:.1f} {}".format(
             self.name,
             float(min(self.data[self.freqname])),
             float(max(self.data[self.freqname])),
             self.frequnit
-        )
+        ) """
