@@ -11,6 +11,35 @@
 
 #: include dialogs.kv
 
+<ScrollAccordionTabItem@TabbedPanelItem>:
+    min_content_area_height: 500
+    content_area: content_area
+    BoxLayout:
+        orientation: 'vertical'
+        ScrollView:
+            Accordion:
+                id: content_area
+                size_hint_y: None
+                height: max(root.height, max(len(self.children), 1) * self.min_space + root.min_content_area_height)
+                orientation: 'vertical'
+        StackLayout:
+            orientation: 'rl-tb'
+            spacing: 5
+            size_hint_y: None
+            height: 30
+            Button:
+                size_hint_x: None
+                width: 60
+                text: 'Cancel'
+                on_release: app.remove_tab(root)
+            Button:
+                id: button_ok
+                size_hint_x: None
+                width: 60
+                text: 'OK'
+                on_release: app.remove_tab(root)
+
+
 <TreeViewPlottable>:
     check: check
     text: 'An unnamed spectrum.' # Set during instantiation
@@ -31,6 +60,7 @@
     # Make widgets important for application logic accessible
     tree: hierarchy
     graph: graph
+    tabs: tab_panel
     
     # Container for everything that isn't the app menu
     BoxLayout:
@@ -73,7 +103,7 @@
                         orientation: 'horizontal'
                         Button:
                             text: 'test'
-                            on_release: Factory.TestDialog(app.ds).open()
+                            on_release: app._do_test_button()
                         Button:
                             text: 'zoom in'
                             on_release: root.graph.zoom(factor=0.5)
@@ -87,9 +117,9 @@
                         text: 'drawing widgets'
             
             # View for data, directory, drawing
-            TabbedPanel:
+            DynamicTabbedPanel:
                 # Update this value with the number of tabs
-                tab_width: self.width / 2
+                tab_width: 100
                 id: tab_panel
                 default_tab: hierarchy_tab
                 size_hint_x: 0.5

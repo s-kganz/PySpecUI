@@ -2,6 +2,7 @@ from kivy.uix.popup import Popup
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.spinner import Spinner
+from kivy.uix.slider import Slider
 from kivy.properties import ObjectProperty, StringProperty
 from kivy.factory import Factory
 from kivy.uix.textinput import TextInput
@@ -12,148 +13,7 @@ from pubsub import pub
 
 from peaks.data.datasource import parse_csv
 from peaks.data.models import ModelGauss
-
-# Widget classes
-class AbstractParameterWidget(BoxLayout):
-    '''
-    Abstract parameter widget defining the interface
-    that all other widgets must adhere to.
-    '''
-    field = ObjectProperty(None)
-    def __init__(self, label_text='', param_name='', **kwargs):
-        self.label_text = label_text
-        self.param_name = param_name
-        super().__init__(**kwargs)
-    
-    def get_parameter_tuple(self):
-        return self.param_name, self._get_parameter_value()
-
-    def _get_parameter_value(self):
-        raise NotImplementedError("Parameter must define get_value()")
-
-class IntegerParameterWidget(AbstractParameterWidget):
-    '''
-    A text field allowing numeric characters only.
-    '''
-    def __init__(self, *args, **kwargs):
-        super().__init__(**kwargs)
-        Clock.schedule_once(self.add_field_widget)
-
-    def add_field_widget(self, *args):
-        w = TextInput(
-            multiline = False,
-            input_filter = 'int'
-        )
-        self.field = w
-        self.ids['layout'].add_widget(w)
-    
-    def _get_parameter_value(self):
-        return int(self.field.text) if len(self.field.text) > 0 else None
-
-class FloatParameterWidget(AbstractParameterWidget):
-    '''
-    A text field allowing numeric input and one decimal point.
-    '''
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        Clock.schedule_once(self.add_field_widget)
-    
-    def add_field_widget(self, *args):
-        w = TextInput(
-            multiline = False,
-            input_filter = 'float'
-        )
-        self.field = w
-        self.ids['layout'].add_widget(w)
-    
-    def _get_parameter_value(self):
-        return float(self.field.text) if len(self.field.text) > 0 else None
-    
-class TextParameterWidget(AbstractParameterWidget):
-    '''
-    A general text input.
-    '''
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        Clock.schedule_once(self.add_field_widget)
-    
-    def add_field_widget(self, *args):
-        w = TextInput(
-            multiline = False
-        )
-        self.field = w
-        self.ids['layout'].add_widget(w)
-
-    def _get_parameter_value(self):
-        return self.field.text
-
-class ChoiceParameterWidget(AbstractParameterWidget):
-    '''
-    A widget for a dropdown menu of choices.
-    '''
-    def __init__(self, choices, **kwargs):
-        self.choices = choices
-        super().__init__(**kwargs)
-        Clock.schedule_once(self.add_field_widget)
-    
-    def add_field_widget(self, *args):
-        w = Spinner(
-            text = self.choices[0],
-            values = self.choices.copy()
-        )
-        self.field = w
-        self.ids['layout'].add_widget(w)
-        del self.choices
-
-    def _get_parameter_value(self):
-        return self.field.text
-
-class SpectrumParameterWidget(ChoiceParameterWidget):
-    '''
-    A widget for a dropdown menu of spectra.
-    '''  
-    def __init__(self, ds, **kwargs):
-        self.choice_dict = {"{} ({})".format(str(s), s.id):s \
-                            for s in ds.get_all_spectra().values()}
-        if len(self.choice_dict) == 0:
-            self.choice_dict = {"No spectra loaded": None}
-        super().__init__(list(self.choice_dict.keys()), **kwargs)
-    
-    def _get_parameter_value(self):
-        return self.choice_dict[self.field.text]
-
-class FileFieldWidget(BoxLayout):
-    '''
-    Helper class for file selection implementing a field
-    to display the selected field and a button to launch
-    a file selection dialog.
-    '''
-    text_field = ObjectProperty(None)
-
-    def __init__(self, *args, **kwargs):
-        self.max_chars = 30
-        super().__init__(*args, **kwargs)
-    
-    def get_value(self):
-        return self.text_field.text
-
-
-class FileParameterWidget(AbstractParameterWidget):
-    '''
-    A widget for opening a dialog for selecting a file.
-    '''
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        Clock.schedule_once(self.add_field_widget)
-    
-    def add_field_widget(self, *args):
-        w = FileFieldWidget()
-        self.field = w
-        self.ids['layout'].add_widget(w)
-    
-    def _get_parameter_value(self):
-        return self.field.get_value()
-
+from peaks.ui.parameters import *
     
 class ParameterListDialog(Popup):
     '''
@@ -270,6 +130,10 @@ class TestDialog(ParameterListDialog):
                 self.ds,
                 label_text='A spectrum',
                 param_name='spectrum'
+            ),
+            FloatSliderParameterWidget(
+                label_text='A float slider:',
+                param_name='floating point slider'
             )
         ]
     

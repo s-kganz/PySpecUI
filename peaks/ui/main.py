@@ -12,6 +12,7 @@ from kivy.properties import ObjectProperty, StringProperty
 from kivy.uix.button import Button
 from kivy.uix.treeview import TreeViewNode, TreeViewLabel, TreeView
 from kivy.uix.popup import Popup
+from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelItem
 from kivy.factory import Factory
 from kivy.clock import Clock
 from kivy_garden.graph import MeshLinePlot, Graph
@@ -28,148 +29,9 @@ from peaks.data.spectrum import Spectrum, Trace
 from peaks.data.models import Model
 from peaks.data.datasource import DataSource
 import peaks.ui.dialogs as dialogs
-
-class TreeViewPlottable(TreeViewNode, BoxLayout):
-    '''
-    Item in a TreeView that holds an object.
-    '''
-    check = ObjectProperty(None) # reference to the check box
-    text = StringProperty(None)
-    plot = ObjectProperty(None)
-
-    def __init__(self, obj: Trace, *args, **kwargs):
-        super(TreeViewPlottable, self).__init__(*args, **kwargs)
-        self.trace = obj
-        # Make a plot
-        self.plot = MeshLinePlot(color=[random.random(), random.random(), random.random(), 1])
-        self.plot.points = zip(self.trace.getx(), self.trace.gety())
-        self.text = str(obj)
-    
-    def send_plot_message(self):
-        '''
-        Called when the checkbox status changes. If the checkbox
-        became active, send the MeshLinePlot to the plot window. Otherwise,
-        remove the plot from the window.
-        '''
-        if self.check.active:
-            # The bounds of the graph on the y axis a little fuzzy, so padding
-            # 10% ensures all data will be in view.
-            xmax, ymax = int(self.trace.getx().max()), \
-                         int(self.trace.gety().max() * 1.1)
-            pub.sendMessage('Plot.AddPlot', trace=self.plot, xmax=xmax, ymax=ymax)
-        else:
-            pub.sendMessage('Plot.RemovePlot', trace=self.plot)
-
-class DataTreeView(TreeView):
-    '''
-    Custom tree view for holding onto spectral data
-    '''
-    headers = []
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._populate_nodes()
-        pub.subscribe(self.uncheck_all, 'Plot.RemoveAll')
-
-    def _create_fake_data(self, n_points=1000):
-        '''
-        Test function : make a simple sinusoid and add it to the
-        tree.
-        '''
-        x = np.linspace(0, 100, num=n_points)
-        y = np.sin(x) * 3 + np.random.normal(0, 1, n_points)
-        s = Spectrum.FromArrays(x, y)
-        self.add_spectrum(s)
-
-    def add_spectrum(self, s):
-        '''
-        Add a spectrum to the tree.
-        '''
-        self.add_node(TreeViewPlottable(s), parent=self.headers[0])
-    
-    def add_model(self, m):
-        '''
-        Add a model to the tree.
-        '''
-        self.add_node(TreeViewPlottable(m), parent=self.headers[1])
-
-    def uncheck_all(self):
-        '''
-        Uncheck all plottable nodes.
-        '''
-        for n in self.iterate_all_nodes():
-            if isinstance(n, TreeViewPlottable):
-                n.check.active = False
-
-    def _populate_nodes(self):
-        '''
-        Set up primary headers.
-        '''
-        for header in ["Spectra", "Models", "Tool Chains"]:
-            node = self.add_node(TreeViewLabel(text=header))
-            self.headers.append(node)
-
-class MyGraph(Graph):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        pub.subscribe(self._add_plot, 'Plot.AddPlot')
-        pub.subscribe(self._remove_plot, 'Plot.RemovePlot')
-        pub.subscribe(self.clear_all_plots, 'Plot.RemoveAll')
-
-    def clear_all_plots(self):
-        '''
-        Remove all meshes in the plotting window.
-        '''
-        meshes = self.plots.copy()
-        for mesh in meshes:
-            self.remove_plot(mesh)
-
-    def _add_plot(self, trace=None, xmax=0, ymax=0):
-        '''
-        Add a new trace object to the plot, update graph limits to include
-        the entirety of the new data.
-        '''
-        self._update_envelope(trace)
-        super().add_plot(trace)
-    
-    def _remove_plot(self, trace=None):
-        self.remove_plot(trace)
-    
-    def zoom(self, factor=2):
-        '''
-        Mutliply the bounds by the factor, causing a zoom.
-        '''
-        self.xmax = int(self.xmax * factor)
-        self.ymax = int(self.ymax * factor)
-
-    def _update_envelope(self, mesh):
-        '''
-        Updates the plot envelope to contain the incoming mesh, with padding.
-        '''
-        new_xmin, new_xmax, new_ymin, new_ymax = self._get_mesh_envelope(mesh)
-        self.xmin = min(self.xmin, new_xmin)
-        self.xmax = max(self.xmax, new_xmax)
-        self.ymin = min(self.ymin, new_ymin)
-        self.ymax = max(self.ymax, new_ymax)
-
-    def _get_mesh_envelope(self, mesh, padding=0.1):
-        '''
-        Return the bounding coordinates of a mesh.
-        
-        Return order: xmin, xmax, ymin, ymax
-        '''
-        xmin = min(mesh.points, key=lambda x: x[0])[0] 
-        xmax = max(mesh.points, key=lambda x: x[0])[0] 
-        ymin = min(mesh.points, key=lambda x: x[1])[1]
-        ymax = max(mesh.points, key=lambda x: x[1])[1]
-
-        pad_y = abs(ymax * padding)
-        pad_x = 0 # abs(xmax * padding)
-
-        return (int(xmin - pad_x), 
-               int(xmax + pad_x),
-               int(ymin - pad_y),
-               int(ymax + pad_y))
+import peaks.ui.treeview
+import peaks.ui.tabpanel
+import peaks.ui.datagraph
 
 class MyLayout(FloatLayout):
     '''
@@ -178,7 +40,8 @@ class MyLayout(FloatLayout):
     tree = ObjectProperty(None)
     graph = ObjectProperty(None)
     status_bar = ObjectProperty(None)
-        
+    tabs = ObjectProperty(None)
+
 class PySpecApp(App):
     def __init__(self):
         super().__init__()
@@ -239,6 +102,12 @@ class PySpecApp(App):
             self.layout.tree.add_model(data)
         else:
             print(data)
+    
+    def _do_test_button(self):
+        self.layout.tabs.add_tab()
+    
+    def remove_tab(self, tab):
+        self.layout.tabs.remove_widget(tab)
 
 if __name__ == '__main__':
     PySpecApp().run()
