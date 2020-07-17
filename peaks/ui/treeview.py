@@ -1,3 +1,4 @@
+from kivy.app import App
 from kivy.properties import ObjectProperty, StringProperty
 from kivy.uix.treeview import TreeViewNode, TreeViewLabel, TreeView
 from kivy.uix.boxlayout import BoxLayout
@@ -16,6 +17,7 @@ class TreeViewPlottable(TreeViewNode, BoxLayout):
     check = ObjectProperty(None) # reference to the check box
     text = StringProperty(None)
     plot = ObjectProperty(None)
+    context_menu = ObjectProperty(None)
 
     def __init__(self, obj: Trace, *args, **kwargs):
         super(TreeViewPlottable, self).__init__(*args, **kwargs)
@@ -41,8 +43,11 @@ class TreeViewPlottable(TreeViewNode, BoxLayout):
             pub.sendMessage('Plot.RemovePlot', trace=self.plot)
     
     def on_touch_down(self, touch):
-        if not super().on_touch_down(touch) and touch.button == 'right':
-            print('oof')
+        if (not super().on_touch_down(touch)) and touch.button == 'right':
+            self.context_menu.show(50, 50)
+            #self.context_menu.show(*App.get_running_app().root_window.mouse_pos)
+            return True
+        return False
 
 class DataTreeView(TreeView):
     '''
