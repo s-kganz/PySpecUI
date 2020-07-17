@@ -244,7 +244,7 @@ class ModelGauss(Model, Trace):
         return self.trace
     
     # Tuner communication functions
-    def get_tuner_parameters(self):
+    def get_schema(self):
         '''
         Roll up current model parameters into a labeled dictionary for display
         in a tuner window.
@@ -252,24 +252,40 @@ class ModelGauss(Model, Trace):
         if self.params is None:
             raise RuntimeError("Model that has not been fitted cannot be tuned.")
             
-        ret = []
+        ret = dict()
         for i in range(0, len(self.params), 3):
-            ret.append(
-                {
-                    'a': ('float', self.params[i]),
-                    'mu': ('float', self.params[i+1]),
-                    'sigma': ('float', self.params[i+2])
+            ret["Peak {}".format(i)] = {
+                    'Height': {
+                        'type': 'float',
+                        'min': 0,
+                        'max': max(self.spectrum.gety()),
+                        'value': self.params[i]
+                    },
+                    'Center': {
+                        'type': 'float',
+                        'min': 0,
+                        'max': max(self.spectrum.getx()),
+                        'value': self.params[i+1]
+                    },
+                    'Width': {
+                        'type': 'float',
+                        'min': 0,
+                        'max': max(self.spectrum.getx()),
+                        'value': self.params[i+2]
+                    }
                 }
-            )
         
-        # sort by mu so that peak n corresponds to peak n to the viewer
-        return sorted(ret, key=lambda x: x['mu'])
+        return ret
 
-    def set_tuner_parameters(self, newparams):
+    def push_schema(self, schema):
         '''
         Receive a set of model parameters from a tuner and set the model object's
         properties and trace.
         '''
+        newparams = list()
+        for key in schema:
+            for param in schema[key]:
+                newparams.append(schema[key][param])
         if not len(newparams) % 3 == 0:
             raise ValueError('Length of new parameters must be divisible by 3.')
         
