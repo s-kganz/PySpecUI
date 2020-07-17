@@ -1,15 +1,15 @@
-from kivy.properties import ObjectProperty
+from kivy.properties import ObjectProperty, StringProperty, NumericProperty
 from kivy.clock import Clock
 from kivy.uix.textinput import TextInput
 from kivy.uix.spinner import Spinner
 from kivy.uix.slider import Slider
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.gridlayout import GridLayout
 
 __all__ = ['IntegerParameterWidget', 'FloatParameterWidget', 'TextParameterWidget',
            'ChoiceParameterWidget', 'SpectrumParameterWidget', 'FileParameterWidget',
-           'FloatSliderParameterWidget']
+           'FloatSliderParameterWidget', 'AccordionSlider']
 
-# Widget classes
 class AbstractParameterWidget(BoxLayout):
     '''
     Abstract parameter widget defining the interface
@@ -165,3 +165,22 @@ class FloatSliderParameterWidget(AbstractParameterWidget):
     
     def _get_parameter_value(self):
         return self.field.value
+
+class AccordionSlider(GridLayout):
+    slider = ObjectProperty(None)
+    param_label = StringProperty(None)
+    param_value = NumericProperty(None)
+    callback = ObjectProperty(None)
+    def __init__(self, callback, *args, type='float', param_label='', min=0, 
+                 max=100, value=50, **kwargs):
+        super().__init__(**kwargs)
+        self.param_label = param_label
+        self.slider.min = min
+        self.slider.max = max
+        self.slider.step = (0.1 if type == 'float' else 1)
+        self.callback = callback
+    
+    def on_slider_stop(self, slider, touch):
+        if touch.grab_current is not None:
+            self.callback.update_schema()
+
