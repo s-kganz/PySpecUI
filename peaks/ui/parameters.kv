@@ -1,0 +1,56 @@
+#: kivy 1.11.1
+#: set DIALOG_PARAMETER_HEIGHT 30
+#: set ACCORDION_PARAMETER_HEIGHT 50
+
+<FileFieldWidget>:
+    text_field: text_field
+    BoxLayout:
+        orientation: 'horizontal'
+        spacing: 5
+        TextInput:
+            id: text_field
+            readonly: True
+        Button:
+            size_hint_x: None
+            width: DIALOG_PARAMETER_HEIGHT
+            text: '...'
+            on_release: Factory.LoadDialog(text_field).open()
+
+<AbstractParameterWidget>:
+    size_hint_y: None
+    height: max(DIALOG_PARAMETER_HEIGHT, label.height)
+    BoxLayout:
+        id: layout
+        orientation: 'horizontal'
+        Label:
+            size_hint_y: None
+            height: self.texture_size[1]
+            id: label
+            text: root.label_text
+            text_size: self.width, None
+            padding_x: 5
+
+<AccordionSlider>:
+    cols: 1
+    slider: slider
+    param_label: ''
+    param_value: slider.value
+    orientation: 'vertical'
+    size_hint_y: None
+    height: ACCORDION_PARAMETER_HEIGHT
+    StackLayout:
+        orientation: 'lr-tb'
+        padding: 15
+        spacing: 5
+        Label:
+            size_hint_x: None
+            width: self.texture_size[0]
+            text: root.param_label
+        Label:
+            size_hint_x: None
+            width: self.texture_size[0]
+            text: "{:.2f}".format(root.slider.value)
+    Slider:
+        id: slider
+        on_touch_move: 
+            root.on_slider_stop(*args)
