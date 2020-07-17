@@ -2,35 +2,7 @@
 #: set PARAMETER_HEIGHT 30
 #: import expanduser os.path.expanduser
 
-<FileFieldWidget@BoxLayout>:
-    text_field: text_field
-    BoxLayout:
-        orientation: 'horizontal'
-        spacing: 5
-        TextInput:
-            id: text_field
-            readonly: True
-        Button:
-            size_hint_x: None
-            width: PARAMETER_HEIGHT
-            text: '...'
-            on_release: Factory.LoadDialog(text_field).open()
-
-<AbstractParameterWidget@BoxLayout>:
-    size_hint_y: None
-    height: max(PARAMETER_HEIGHT, label.height)
-    BoxLayout:
-        id: layout
-        orientation: 'horizontal'
-        Label:
-            size_hint_y: None
-            height: self.texture_size[1]
-            id: label
-            text: root.label_text
-            text_size: self.width, None
-            padding_x: 5
-
-<ParameterListDialog@Popup>:
+<ParameterListDialog>:
     button_ok: button_ok
     BoxLayout:
         padding: 5
@@ -66,7 +38,7 @@
                 text: 'OK'
                 on_release: root.dismiss(); root._execute()
 
-<LoadDialog@Popup>:
+<LoadDialog>:
     filechooser: filechooser
     BoxLayout:
         size: root.size

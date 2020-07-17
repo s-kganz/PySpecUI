@@ -104,7 +104,8 @@ class PySpecApp(App):
             print(data)
     
     def _do_test_button(self):
-        self.layout.tabs.add_tab()
+        return
+        # self.layout.tabs.add_tab()
     
     def remove_tab(self, tab):
         self.layout.tabs.remove_widget(tab)
