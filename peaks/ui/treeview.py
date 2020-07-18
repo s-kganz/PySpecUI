@@ -8,7 +8,7 @@ import random
 from pubsub import pub
 import numpy as np
 
-from peaks.data.spectrum import Spectrum, Trace
+from ..data.spectrum import Spectrum, Trace
 
 class TreeViewPlottable(TreeViewNode, BoxLayout):
     '''
@@ -36,18 +36,13 @@ class TreeViewPlottable(TreeViewNode, BoxLayout):
         if self.check.active:
             # The bounds of the graph on the y axis a little fuzzy, so padding
             # 10% ensures all data will be in view.
-            xmax, ymax = int(self.trace.getx().max()), \
-                         int(self.trace.gety().max() * 1.1)
-            pub.sendMessage('Plot.AddPlot', trace=self.plot, xmax=xmax, ymax=ymax)
+            pub.sendMessage('Plot.AddPlot', trace=self.trace)
         else:
-            pub.sendMessage('Plot.RemovePlot', trace=self.plot)
+            pub.sendMessage('Plot.RemovePlot', trace=self.trace)
     
     def on_touch_down(self, touch):
         if (not super().on_touch_down(touch)) and touch.button == 'right':
-            self.context_menu.show(50, 50)
-            #self.context_menu.show(*App.get_running_app().root_window.mouse_pos)
-            return True
-        return False
+            App.get_running_app().add_tuner_tab(self.trace)
 
 class DataTreeView(TreeView):
     '''
