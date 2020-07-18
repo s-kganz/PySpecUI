@@ -10,12 +10,16 @@ number of functions to fit, 2) making an initial guess
 at the function parameters, and 3) tuning the parameters
 to an optimal solution that is retained by the object.
 '''
+# KIVY MODULES
+from kivy_garden.graph import MeshLinePlot
+
 # GENERAL MODULES
 import numpy as np
 from scipy import signal
 from scipy.optimize import least_squares
 from pubsub import pub
 import asyncio
+from random import random
 
 # NAMESPACE MODULES
 from peaks.data.data_helpers import Trace
@@ -48,6 +52,10 @@ class Model(object):
 
         self.trace = None # The prediction this model makes on the frequency domain
                           # of the spectrum.
+        
+        # Representation of the model in the graph
+        self.mesh = MeshLinePlot(color=[random(), random(), random(), 1])
+        self._bounds = None
 
     def fit(self, params):
         '''
@@ -62,7 +70,7 @@ class Model(object):
         '''
         raise NotImplementedError("Model prediction must be defined!")
 
-    def evaluate_model(self, params=None):
+    def evaluate_parameters(self, params=None):
         '''
         Evaluate the model on its own domain, optionally specifying parameters to use
         instead of those retained by a .Fit() call.
@@ -112,26 +120,29 @@ class ModelGauss(Model, Trace):
         '''
         return a*np.exp(-(x-mu)**2/(2*sigma**2))
 
-    def evaluate_model(self, params=None):
+    def evaluate_parameters(self, params):
         '''
-        Generate a model over the given parameters on the domain
-        specified by the model's spectrum object. If no parameters
-        are specified, use the object's parameters as set by a call
-        to Fit().
-
-        Params must be a 1D array with 3*n elements, where n
-        is the number of Gaussian peaks specified
+        Return the result of evaluating the passed model parameters over the x-axis
+        specified by this object.
         '''
-        if params is None:
-            params = self.params
-
         x = self.spectrum.getx()
+        ret = np.zeros(len(x))
 
         ret = np.zeros(len(x))
         for i in range(0, len(params), 3):
             ret += self.gauss(x, params[i], params[i+1], params[i+2])
-
+        
         return ret
+
+    def update_model(self, params):
+        '''
+        Update the internal representation of this object using the passed
+        parameters.
+        '''
+        self.params = params
+        self.trace = self.evaluate_parameters(params)
+        self._update_bounds()
+        self._update_mesh()
 
     def guess_parameters(self, poly_order=2, winlen=None, peak_min=0, peak_max=None, **kwargs):
         '''
@@ -203,13 +214,13 @@ class ModelGauss(Model, Trace):
         '''
         true_signal = self.spectrum.gety()
         fit_result = least_squares(
-            lambda p: self.evaluate_model(p) - true_signal,
+            lambda p: self.evaluate_parameters(p) - true_signal,
             params,
             bounds=(0, np.inf),  # nothing should be below 0
             method='trf')
 
-        self.params = fit_result['x']
-        self.trace = self.evaluate_model()
+        # Update internal model representation
+        self.update_model(fit_result['x'])
         return True
 
     def predict(self, x):
@@ -242,6 +253,18 @@ class ModelGauss(Model, Trace):
             return
 
         return self.trace
+
+    def _update_mesh(self):
+        self.mesh.points = zip(self.getx(), self.gety())
+
+    def get_mesh(self):
+        return self.mesh
+
+    def _update_bounds(self):
+        self._bounds = min(self.getx()), max(self.getx()), min(self.gety()), max(self.gety())
+
+    def bounds(self):
+        return self._bounds
     
     # Tuner communication functions
     def get_schema(self):
@@ -254,7 +277,7 @@ class ModelGauss(Model, Trace):
             
         ret = dict()
         for i in range(0, len(self.params), 3):
-            ret["Peak {}".format(i)] = {
+            ret["Peak {}".format(i // 3 + 1)] = {
                     'Height': {
                         'type': 'float',
                         'min': 0,
@@ -291,7 +314,7 @@ class ModelGauss(Model, Trace):
         
         # Re-evaluate the trace
         self.params = newparams.copy() # everything should be a float so deepcopy isn't necessary
-        self.trace = self.evaluate_model()
+        self.trace = self.update_model(newparams)
 
     def __str__(self):
         return self.model_name
