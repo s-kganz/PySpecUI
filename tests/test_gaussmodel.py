@@ -1,6 +1,6 @@
 # Class to be tested
 from peaks.data.models import ModelGauss
-from peaks.data.spec import Spectrum
+from peaks.data.spectrum import Spectrum
 import unittest
 
 import numpy as np
@@ -13,15 +13,15 @@ class TestModelGauss(unittest.TestCase):
         mu = 24
         sigma = 5
         x = np.linspace(0, 100, num=100)
-        g = ModelGauss.Gauss(x, a, mu, sigma)
+        g = ModelGauss.gauss(x, a, mu, sigma)
 
-        spec = Spectrum.FromArrays(x, g)
+        spec = Spectrum.from_arrays(x, g)
 
         # See if fitting proceeds at all
         mg = ModelGauss(spec, None)
-        guess = mg.ParamGuess()
+        guess = mg.guess_parameters()
         self.assertNotEqual(len(guess), 0)
-        self.assertEqual(mg.Fit(guess), True)
+        self.assertEqual(mg.fit(guess), True)
 
         # See if fitting matches the expected signal parameters
         self.assertAlmostEqual(a, mg.params[0], places=2)
@@ -29,7 +29,7 @@ class TestModelGauss(unittest.TestCase):
         self.assertAlmostEqual(sigma, mg.params[2], places=2)
 
         # See if predicting over the signal domain gets essentially the same signal
-        pred = mg.EvalModel()
+        pred = mg.evaluate_model()
         for actual, pred in zip(g, pred):
             self.assertAlmostEqual(actual, pred, delta=0.01)
     
@@ -49,14 +49,14 @@ class TestModelGauss(unittest.TestCase):
 
             #print("{}\t{}\t{}".format(a, mu, sig))
 
-            g = ModelGauss.Gauss(x, a, mu, sig)
-            spec = Spectrum.FromArrays(x, g)
+            g = ModelGauss.gauss(x, a, mu, sig)
+            spec = Spectrum.from_arrays(x, g)
 
             # See if fitting proceeds at all
             mg = ModelGauss(spec, None)
-            guess = mg.ParamGuess(peak_range=(0, 1))
+            guess = mg.guess_parameters(peak_range=(0, 1))
             self.assertNotEqual(len(guess), 0)
-            self.assertEqual(mg.Fit(guess), True)
+            self.assertEqual(mg.fit(guess), True)
 
             # See if fitting matches the expected signal parameters
             self.assertAlmostEqual(a, mg.params[0], delta=0.1)
@@ -69,17 +69,17 @@ class TestModelGauss(unittest.TestCase):
         params = [1, 45, 5, 1, 55, 5]
         g = np.zeros(len(x))
         for i in range(0, len(params), 3):
-            g += ModelGauss.Gauss(x, params[i], params[i+1], params[i+2])
+            g += ModelGauss.gauss(x, params[i], params[i+1], params[i+2])
 
-        spec = Spectrum.FromArrays(x, g)
+        spec = Spectrum.from_arrays(x, g)
 
         # See if fitting proceeds at all
         mg = ModelGauss(spec, None)
-        guess = mg.ParamGuess(peak_range=(0, 5))
+        guess = mg.guess_parameters(peak_range=(0, 5))
         self.assertNotEqual(len(guess), 0)
         # Did we get the right number of params?
         self.assertEqual(len(guess), len(params))
-        self.assertEqual(mg.Fit(guess), True)
+        self.assertEqual(mg.fit(guess), True)
 
         # Are all the parameters equal?
         # sort since peak order doesn't matter

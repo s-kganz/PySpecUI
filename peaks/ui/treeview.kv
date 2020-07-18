@@ -1,0 +1,13 @@
+#: kivy 1.11.1
+#: import ContextMenu kivy_garden.contextmenu
+
+<TreeViewPlottable>:
+    id: node
+    context_menu: context
+    ContextMenu:
+        id: context
+        visible: False
+        cancel_handler_widget: node
+        ContextMenuTextItem:
+            text: 'Tune'
+            on_touch_down: print('foo')

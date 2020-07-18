@@ -30,3 +30,16 @@ class Trace():
         Label this trace displays when plotted.
         '''
         raise NotImplementedError("Plottable object must have label() defined.")
+
+    def get_mesh(self):
+        '''
+        Return the MeshLinePlot associated with this object.
+        '''
+        raise NotImplementedError("Plottable object must have get_mesh() defined.")
+    
+    def bounds(self):
+        '''
+        Return a tuple representing the bounding data coordinates of this trace.
+        '''
+        raise NotImplementedError("Plottable object must have bounds() defined.")
+        

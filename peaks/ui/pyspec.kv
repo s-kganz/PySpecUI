@@ -1,0 +1,168 @@
+#: kivy 1.11.1
+#: import Graph kivy_garden.graph
+#: import TreeViewLabel kivy.uix.treeview.TreeViewLabel
+#: import AppMenu kivy_garden.contextmenu
+#: import ContextMenu kivy_garden.contextmenu
+#: import ContextMenuTextItem kivy_garden.contextmenu    
+#: import Factory kivy.factory.Factory
+
+#: import pub pubsub.pub
+#: import sleep time.sleep
+
+#: include dialogs.kv
+#: include parameters.kv
+#: include treeview.kv
+
+<TunerTabItem>:
+    min_content_area_height: 500
+    content_area: content_area
+    BoxLayout:
+        orientation: 'vertical'
+        ScrollView:
+            Accordion:
+                id: content_area
+                size_hint_y: None
+                height: max(root.height, max(len(self.children), 1) * self.min_space + root.min_content_area_height)
+                orientation: 'vertical'
+        StackLayout:
+            orientation: 'rl-tb'
+            spacing: 5
+            size_hint_y: None
+            height: 30
+            Button:
+                size_hint_x: None
+                width: 60
+                text: 'Cancel'
+                on_release: app.remove_tab(root)
+            Button:
+                id: button_ok
+                size_hint_x: None
+                width: 60
+                text: 'OK'
+                on_release: app.remove_tab(root)
+
+
+<TreeViewPlottable>:
+    check: check
+    text: 'An unnamed spectrum.' # Set during instantiation
+    height: 30
+    spacing: 10
+    CheckBox:
+        id: check
+        on_active: self.parent.send_plot_message() # pubsub is not defined here
+        size_hint_x: None
+        width: 15
+    Label:
+        text: self.parent.text
+        size_hint_x: None
+        width: self.texture_size[0]    
+
+# Root widget of the application
+<MyLayout>:
+    # Make widgets important for application logic accessible
+    tree: hierarchy
+    graph: graph
+    tabs: tab_panel
+    
+    # Container for everything that isn't the app menu
+    BoxLayout:
+        height: root.height - app_menu.height
+        top: root.height - app_menu.height
+        size_hint: 1, None
+        orientation: 'vertical'
+        # Space the graphing area and hierarchy on the left and right
+        BoxLayout:
+            id: content_area
+            orientation: 'horizontal'
+            # Graphing area
+            BoxLayout:
+                orientation: 'vertical'
+                # Graphing window
+                # Sits inside a splitter so that everything remains resizable
+                Splitter:
+                    sizable_from: 'bottom'
+                    MyGraph:
+                        id: graph
+                        border_color: [0, 0, 0, 0]
+                        background_color: [0.94, 0.94, 0.94, 1.0]
+                        label_options: {'color': (0.25, 0.25, 0.25, 1)}
+                        tick_color: (.75, .75, .75, 1)
+                        xmin: 0
+                        xmax: 100
+                        ymin: -5
+                        ymax: 5
+                        x_grid: True
+                        x_grid_label: True
+                        x_ticks_major: int(abs(self.xmax - self.xmin)) / 10
+                        y_grid: True 
+                        y_grid_label: True 
+                        y_ticks_major: int(abs(self.ymax - self.ymin)) / 10
+                        
+                # Graphing partner widgets
+                BoxLayout:
+                    orientation: 'vertical'
+                    BoxLayout:
+                        orientation: 'horizontal'
+                        Button:
+                            text: 'test'
+                            on_release: app._do_test_button()
+                        Button:
+                            text: 'zoom in'
+                            on_release: root.graph.zoom(factor=0.5)
+                        Button:
+                            text: 'zoom out'
+                            on_release: root.graph.zoom(factor=2)
+                    Button:
+                        text: 'Clear'
+                        on_press: pub.sendMessage('Plot.RemoveAll')
+                    Label:
+                        text: 'drawing widgets'
+            
+            # View for data, directory, drawing
+            DynamicTabbedPanel:
+                # Update this value with the number of tabs
+                tab_width: 100
+                id: tab_panel
+                default_tab: hierarchy_tab
+                size_hint_x: 0.5
+                # Show all data in the application
+                TabbedPanelItem:
+                    id: hierarchy_tab
+                    text: 'Hierarchy'
+                    ScrollView:
+                        scroll_wheel_distance: 30
+                        DataTreeView:
+                            hide_root: True
+                            id: hierarchy
+                            # Set these two properties to enable scrolling
+                            size_hint_y: None
+                            height: self.minimum_height
+                # View files in the project directory
+                TabbedPanelItem:
+                    id: directory_tab
+                    text: "Directory"
+                    FileChooserListView:
+                        multiselect: False
+    
+    # Main application menu
+    # This needs to be the last widget in the root layout
+    # in order to be drawn on top of everything below it
+    AppMenu:
+        id: app_menu
+        top: root.height
+        cancel_handler_widget: root
+        AppMenuTextItem:
+            text: 'Data'
+            ContextMenu:
+                ContextMenuTextItem:
+                    text: "Load delimited file..."
+                    on_release: Factory.SingleFileLoadDialog(app.ds, title=self.text).open()
+                ContextMenuTextItem:
+                    text: "Fit Gaussian peaks..."
+                    on_release: Factory.GaussModelDialog(app.ds, title=self.text).open()
+        AppMenuTextItem:
+            text: 'Fluff'
+            ContextMenu:
+                ContextMenuTextItem:
+                    text: 'Say hello!'
+                    on_release: print('Hello!')

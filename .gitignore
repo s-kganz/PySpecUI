@@ -1,9 +1,9 @@
-# Dev environment + cython
+# Dev environment + ide
 __pycache__
 .vscode
 
 # Environment
-wxpython
+kivy
 
 # dev help
 examples
@@ -18,3 +18,4 @@ dist
 features.txt
 schedule.txt
 tools.txt
+treespec*

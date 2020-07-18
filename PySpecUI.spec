@@ -1,9 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
+import kivy_garden
+from kivy_deps import sdl2, glew
 
 block_cipher = None
 
 
-a = Analysis(['start_ui.py'],
+a = Analysis(['peaks\\ui\\main.py'],
              pathex=['C:\\Users\\ganzk\\Desktop\\peaks'],
              binaries=[],
              datas=[],
@@ -21,7 +23,7 @@ exe = EXE(pyz,
           a.scripts,
           [],
           exclude_binaries=True,
-          name='start_ui',
+          name='PySpecUI',
           debug=False,
           bootloader_ignore_signals=False,
           strip=False,
@@ -31,7 +33,8 @@ coll = COLLECT(exe,
                a.binaries,
                a.zipfiles,
                a.datas,
+               *[Tree(p) for p in (sdl2.dep_bins + glew.dep_bins)],
                strip=False,
                upx=True,
                upx_exclude=[],
-               name='start_ui')
+               name='PySpecUI')

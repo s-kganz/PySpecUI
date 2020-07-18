@@ -1,9 +1,13 @@
 '''
-Implementation of data representation.
+Implementation of spectral data representation.
 '''
+# KIVY MODULES
+from kivy_garden.graph import MeshLinePlot
+
 # GENERAL MODULES
 import pandas as pd
 from os.path import basename
+from random import random
 
 # NAMESPACE MODULES
 from .data_helpers import Trace
@@ -16,7 +20,7 @@ class Spectrum(Trace):
     and other metadata.
     '''
 
-    def __init__(self, df, id, specunit="", frequnit="",
+    def __init__(self, df, id=None, specunit="", frequnit="",
                  name="", freqcol=0, speccol=None):
         
         super(Spectrum, self).__init__()
@@ -38,8 +42,14 @@ class Spectrum(Trace):
         self.name = name
         self.is_plotted = False
 
+        # Determine min/max. Spectra are immutable so this can just
+        # be calculated once
+        self._bounds = min(self.getx()), max(self.getx()), min(self.gety()), max(self.gety())
+        self.mesh = MeshLinePlot(color=[random(), random(), random(), 1])
+        self._update_mesh()
+
     @staticmethod
-    def FromDataframe(df, id=-1, specunit="", frequnit="",
+    def from_data_frame(df, id=-1, specunit="", frequnit="",
                       name="", freqcol=0, speccol=1):
         '''
         Initialize a new Spectrum object from a data frame.
@@ -49,7 +59,7 @@ class Spectrum(Trace):
                         name=name, freqcol=0, speccol=1)
 
     @staticmethod
-    def FromArrays(freq, spec, id=-1, specunit="", frequnit="",
+    def from_arrays(freq, spec, id=-1, specunit="", frequnit="",
                    name=""):
         df = pd.DataFrame({'frequency': freq, 'signal': spec})
         return Spectrum(df, id, specunit=specunit, frequnit=frequnit,
@@ -64,11 +74,25 @@ class Spectrum(Trace):
 
     def label(self):
         return self.name
+    
+    def bounds(self):
+        return self._bounds
+    
+    def _update_mesh(self):
+        '''
+        Update the points in the mesh
+        '''
+        self.mesh.points = zip(self.getx(), self.gety())
+
+    def get_mesh(self):
+        return self.mesh
 
     def __str__(self):
-        return "{}: {:.1f}-{:.1f} {}".format(
+        return self.name
+
+        """ return "{}: {:.1f}-{:.1f} {}".format(
             self.name,
             float(min(self.data[self.freqname])),
             float(max(self.data[self.freqname])),
             self.frequnit
-        )
+        ) """

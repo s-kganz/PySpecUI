@@ -1,0 +1,67 @@
+#: kivy 1.11.1
+#: set PARAMETER_HEIGHT 30
+#: import expanduser os.path.expanduser
+
+<ParameterListDialog>:
+    button_ok: button_ok
+    BoxLayout:
+        padding: 5
+        spacing: 5
+        orientation: 'vertical'
+        ScrollView:
+            id: scroll
+            height: max(self.parent.height*.9, self.parent.height - 30)
+            do_scroll_y: True
+            GridLayout:
+                height: self.minimum_height
+                id: content_area
+                orientation: 'vertical'
+                size_hint_y: None
+                cols: 1
+                spacing: 5
+                # ** widgets added here during instantiation **
+
+        StackLayout:
+            orientation: 'rl-tb'
+            spacing: 5
+            size_hint_y: None
+            height: min(self.parent.height*.1, 30)
+            Button:
+                size_hint_x: None
+                width: 60
+                text: 'Cancel'
+                on_release: root.dismiss()
+            Button:
+                id: button_ok
+                size_hint_x: None
+                width: 60
+                text: 'OK'
+                on_release: root.dismiss(); root._execute()
+
+<LoadDialog>:
+    filechooser: filechooser
+    BoxLayout:
+        size: root.size
+        pos: root.pos
+        orientation: "vertical"
+        FileChooserListView:
+            id: filechooser
+            dirselect: False
+            path: expanduser('~')
+
+        StackLayout:
+            orientation: 'rl-tb'
+            spacing: 5
+            size_hint_y: None
+            height: min(self.parent.height*.1, 30)
+            Button:
+                size_hint_x: None
+                width: 60
+                text: 'Cancel'
+                on_release: root.dismiss()
+            Button:
+                id: button_ok
+                size_hint_x: None
+                width: 60
+                text: 'OK'
+                on_release: root.post_result(); root.dismiss()
