@@ -5,7 +5,9 @@ from kivy.clock import Clock
 from kivy.factory import Factory
 from kivy.uix.gridlayout import GridLayout
 
-from peaks.ui.parameters import AccordionSlider
+import peaks
+from .parameters import AccordionSlider
+
 
 class TunerTabItem(TabbedPanelItem):
     content_area = ObjectProperty(None)
@@ -39,14 +41,14 @@ class TunerTabItem(TabbedPanelItem):
             ret[key] = dict()
             for param in self.param_schema[key]:
                 ret[key][param] = self.param_schema[key][param].param_value
-        
-        callback.set_schema(ret)
+        self.callback.push_schema(ret)
 
 
 class DynamicTabbedPanel(TabbedPanel):
     def add_tuner(self, tunable):
-        blank = TunerTabItem(tunable, text='Tuner')
-        self.add_widget(blank)
+        if not isinstance(tunable, peaks.data.models.Model): return
+        widget = TunerTabItem(tunable, text='Tuner')
+        self.add_widget(widget)
 
         
 Factory.register('TunerTabItem', cls=TunerTabItem)

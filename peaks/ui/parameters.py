@@ -6,6 +6,8 @@ from kivy.uix.slider import Slider
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
 
+from numpy import around
+
 __all__ = ['IntegerParameterWidget', 'FloatParameterWidget', 'TextParameterWidget',
            'ChoiceParameterWidget', 'SpectrumParameterWidget', 'FileParameterWidget',
            'FloatSliderParameterWidget', 'AccordionSlider']
@@ -178,6 +180,7 @@ class AccordionSlider(GridLayout):
         self.slider.min = min
         self.slider.max = max
         self.slider.step = (0.1 if type == 'float' else 1)
+        self.slider.value = float(around(value, decimals=1))
         self.callback = callback
     
     def on_slider_stop(self, slider, touch):
