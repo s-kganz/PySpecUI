@@ -15,7 +15,7 @@ class TestModelGauss(unittest.TestCase):
         x = np.linspace(0, 100, num=100)
         g = ModelGauss.gauss(x, a, mu, sigma)
 
-        spec = Spectrum.FromArrays(x, g)
+        spec = Spectrum.from_arrays(x, g)
 
         # See if fitting proceeds at all
         mg = ModelGauss(spec, None)
@@ -50,7 +50,7 @@ class TestModelGauss(unittest.TestCase):
             #print("{}\t{}\t{}".format(a, mu, sig))
 
             g = ModelGauss.gauss(x, a, mu, sig)
-            spec = Spectrum.FromArrays(x, g)
+            spec = Spectrum.from_arrays(x, g)
 
             # See if fitting proceeds at all
             mg = ModelGauss(spec, None)
@@ -71,7 +71,7 @@ class TestModelGauss(unittest.TestCase):
         for i in range(0, len(params), 3):
             g += ModelGauss.gauss(x, params[i], params[i+1], params[i+2])
 
-        spec = Spectrum.FromArrays(x, g)
+        spec = Spectrum.from_arrays(x, g)
 
         # See if fitting proceeds at all
         mg = ModelGauss(spec, None)
