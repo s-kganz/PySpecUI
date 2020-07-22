@@ -93,10 +93,10 @@
                         ymax: 5
                         x_grid: True
                         x_grid_label: True
-                        x_ticks_major: int(abs(self.xmax - self.xmin)) / 10
+                        x_ticks_major: abs(self.xmax - self.xmin) / 10
                         y_grid: True 
                         y_grid_label: True 
-                        y_ticks_major: int(abs(self.ymax - self.ymin)) / 10
+                        y_ticks_major: abs(self.ymax - self.ymin) / 10
                         
                 # Graphing partner widgets
                 BoxLayout:
@@ -108,10 +108,10 @@
                             on_release: app._do_test_button()
                         Button:
                             text: 'zoom in'
-                            on_release: root.graph.zoom(factor=0.5)
+                            on_release: root.graph.zoom(factor=0.1)
                         Button:
                             text: 'zoom out'
-                            on_release: root.graph.zoom(factor=2)
+                            on_release: root.graph.zoom(factor=-0.1)
                     Button:
                         text: 'Clear'
                         on_press: pub.sendMessage('Plot.RemoveAll')
