@@ -100,49 +100,49 @@
                         
                 # Graphing partner widgets
                 BoxLayout:
-                    orientation: 'vertical'
+                    orientation: 'horizontal'
                     BoxLayout:
-                        orientation: 'horizontal'
+                        orientation: 'vertical'
+                        BoxLayout:
+                            orientation: 'horizontal'
+                            Button:
+                                text: 'fit'
+                                on_release: root.graph.fit_to_data()
+                            Button:
+                                text: 'zoom in'
+                                on_release: root.graph.zoom(factor=0.5)
+                            Button:
+                                text: 'zoom out'
+                                on_release: root.graph.zoom(factor=-0.5)
                         Button:
-                            text: 'test'
-                            on_release: app._do_test_button()
-                        Button:
-                            text: 'zoom in'
-                            on_release: root.graph.zoom(factor=0.1)
-                        Button:
-                            text: 'zoom out'
-                            on_release: root.graph.zoom(factor=-0.1)
-                    Button:
-                        text: 'Clear'
-                        on_press: pub.sendMessage('Plot.RemoveAll')
-                    Label:
-                        text: 'drawing widgets'
-            
-            # View for data, directory, drawing
-            DynamicTabbedPanel:
-                # Update this value with the number of tabs
-                tab_width: 100
-                id: tab_panel
-                default_tab: hierarchy_tab
-                size_hint_x: 0.5
-                # Show all data in the application
-                TabbedPanelItem:
-                    id: hierarchy_tab
-                    text: 'Hierarchy'
-                    ScrollView:
-                        scroll_wheel_distance: 30
-                        DataTreeView:
-                            hide_root: True
-                            id: hierarchy
-                            # Set these two properties to enable scrolling
-                            size_hint_y: None
-                            height: self.minimum_height
-                # View files in the project directory
-                TabbedPanelItem:
-                    id: directory_tab
-                    text: "Directory"
-                    FileChooserListView:
-                        multiselect: False
+                            text: 'Clear'
+                            on_press: pub.sendMessage('Plot.RemoveAll')
+                        Label:
+                            text: 'drawing widgets'
+                    DynamicTabbedPanel:
+                        # Update this value with the number of tabs
+                        tab_width: 100
+                        id: tab_panel
+                        default_tab: hierarchy_tab
+                        size_hint_x: 0.5
+                        # Show all data in the application
+                        TabbedPanelItem:
+                            id: hierarchy_tab
+                            text: 'Hierarchy'
+                            ScrollView:
+                                scroll_wheel_distance: 30
+                                DataTreeView:
+                                    hide_root: True
+                                    id: hierarchy
+                                    # Set these two properties to enable scrolling
+                                    size_hint_y: None
+                                    height: self.minimum_height
+                        # View files in the project directory
+                        TabbedPanelItem:
+                            id: directory_tab
+                            text: "Directory"
+                            FileChooserListView:
+                                multiselect: False
     
     # Main application menu
     # This needs to be the last widget in the root layout
