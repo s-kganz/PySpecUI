@@ -1,3 +1,3 @@
-from distutils.core import setup
+from setuptools import setup, find_packages
 
-setup(name='peaks', version='dev', packages=['peaks'])
+setup(name='peaks', version='dev', packages=find_packages())
