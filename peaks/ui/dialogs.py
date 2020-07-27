@@ -15,6 +15,12 @@ from peaks.data.datasource import parse_csv
 from peaks.data.models import ModelGauss
 from peaks.ui.parameters import *
     
+class ParameterNamespace(object):
+    '''
+    Helper object to hold parameter objects in the dialog.
+    '''
+    pass
+
 class ParameterListDialog(Popup):
     '''
     Popup with a scroll view of classes derived from
@@ -24,6 +30,7 @@ class ParameterListDialog(Popup):
     
     def __init__(self, datasource, *args, **kwargs):
         self.ds = datasource
+        self.ns = ParameterNamespace()
         defaults = dict(
             size_hint = (None, None),
             size = (400, 600),
@@ -42,6 +49,7 @@ class ParameterListDialog(Popup):
         parameters = self.define_parameters()
         for widget in parameters:
             self.ids['content_area'].add_widget(widget)
+            setattr(self.ns, widget.param_name, widget)
     
     def _execute(self):
         '''
@@ -51,7 +59,7 @@ class ParameterListDialog(Popup):
         param_values = {
             name:value for (name, value) in \
             map(lambda p: p.get_parameter_tuple(), self.ids['content_area'].children)
-        } 
+        }
         # Wrap the call in a lambda, start in own thread
         pub.sendMessage('Data.StartThread', caller=lambda: self.execute(param_values))
 
@@ -154,31 +162,38 @@ class SingleFileLoadDialog(ParameterListDialog):
             ChoiceParameterWidget(
                 ['Space', 'Comma', 'Tab'],
                 label_text='Delimiter:',
-                param_name='delimChoice'
+                param_name='delimChoice',
+                default=1
             ),
             IntegerParameterWidget(
                 label_text='Frequency column index:',
-                param_name='freqCol'
+                param_name='freqCol',
+                default=0
             ),
             IntegerParameterWidget(
                 label_text='Spectral column index:',
-                param_name='specCol'
+                param_name='specCol',
+                default=1
             ),
             TextParameterWidget(
                 label_text='Frequency unit:',
-                param_name='freqUnit'
+                param_name='freqUnit',
+                default='x'
             ),
             TextParameterWidget(
                 label_text='Spectral unit:',
-                param_name='specUnit'
+                param_name='specUnit',
+                default='y'
             ),
             TextParameterWidget(
                 label_text='Comment character:',
-                param_name='commentChar'
+                param_name='commentChar',
+                default='#'
             ),
             IntegerParameterWidget(
                 label_text='Lines to skip:',
                 param_name='skipCount',
+                default='0'
             )
         ]
     
