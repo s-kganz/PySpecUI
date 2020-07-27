@@ -15,15 +15,23 @@ from peaks.data.datasource import parse_csv
 from peaks.data.models import ModelGauss
 from peaks.ui.parameters import *
     
+class ParameterNamespace(object):
+    '''
+    Helper object to hold parameter objects in the dialog.
+    '''
+    pass
+
 class ParameterListDialog(Popup):
     '''
     Popup with a scroll view of classes derived from
     AbstractParameterWidget
     '''
     button_ok = ObjectProperty(None)
-    
+    errlabel = ObjectProperty(None)
+
     def __init__(self, datasource, *args, **kwargs):
         self.ds = datasource
+        self.parameters = ParameterNamespace()
         defaults = dict(
             size_hint = (None, None),
             size = (400, 600),
@@ -42,18 +50,22 @@ class ParameterListDialog(Popup):
         parameters = self.define_parameters()
         for widget in parameters:
             self.ids['content_area'].add_widget(widget)
+            setattr(self.parameters, widget.param_name, widget)
     
     def _execute(self):
         '''
         Gather all parameter widgets from the content area and pass
         to execution function.
         '''
+        if not self.validate(): return
         param_values = {
             name:value for (name, value) in \
             map(lambda p: p.get_parameter_tuple(), self.ids['content_area'].children)
-        } 
+        }
         # Wrap the call in a lambda, start in own thread
         pub.sendMessage('Data.StartThread', caller=lambda: self.execute(param_values))
+        # Finally, close the dialog
+        self.dismiss()
 
     def define_parameters(self):
         '''
@@ -64,10 +76,20 @@ class ParameterListDialog(Popup):
     
     def execute(self, parameters):
         '''
-        Function that implements tool execution. Parameters is a list of parameter
-        values in the same order as the list where parameters are defined.
+        Function that implements tool execution. Parameters is a dictionary
+        where keys are parameter name and values are parameter value.
         '''
         raise NotImplementedError("Tool execution must be defined.")
+
+    def validate(self):
+        '''
+        Use the self.ns object to access paramters as attributes, show error
+        text as necessary
+        '''
+        return True
+    
+    def show_error(self, text):
+        self.errlabel.text = text
 
     def post_data(self, data):
         pub.sendMessage('Data.Post', data=data)
@@ -89,7 +111,7 @@ class LoadDialog(Popup):
         )
         defaults.update(**kwargs)
         super().__init__(*args, **defaults)
-    
+
     def post_result(self):
         try:
             f = self.filechooser.selection[0]
@@ -154,34 +176,41 @@ class SingleFileLoadDialog(ParameterListDialog):
             ChoiceParameterWidget(
                 ['Space', 'Comma', 'Tab'],
                 label_text='Delimiter:',
-                param_name='delimChoice'
+                param_name='delimChoice',
+                default=1
             ),
             IntegerParameterWidget(
                 label_text='Frequency column index:',
-                param_name='freqCol'
+                param_name='freqCol',
+                default=0
             ),
             IntegerParameterWidget(
                 label_text='Spectral column index:',
-                param_name='specCol'
+                param_name='specCol',
+                default=1
             ),
             TextParameterWidget(
                 label_text='Frequency unit:',
-                param_name='freqUnit'
+                param_name='freqUnit',
+                default='x'
             ),
             TextParameterWidget(
                 label_text='Spectral unit:',
-                param_name='specUnit'
+                param_name='specUnit',
+                default='y'
             ),
             TextParameterWidget(
                 label_text='Comment character:',
-                param_name='commentChar'
+                param_name='commentChar',
+                default='#'
             ),
             IntegerParameterWidget(
                 label_text='Lines to skip:',
                 param_name='skipCount',
+                default='0'
             )
         ]
-    
+
     def execute(self, parameters):
         spectrum = parse_csv(
             delimChoice=parameters['delimChoice'],
@@ -215,18 +244,17 @@ class GaussModelDialog(ParameterListDialog):
                 param_name='peak_max'
             ),
             IntegerParameterWidget(
-                label_text="Savitsky-Golay polynomial order:",
+                label_text="Savitsky-Golay polynomial degree:",
                 param_name='poly_order'
             ),
             TextParameterWidget(
                 label_text='Model name:',
-                param_name='model_name'
+                param_name='model_name',
+                default='gauss'
             )
         ]
     
     def execute(self, parameters):
-        import time
-        time.sleep(5)
         m = ModelGauss(parameters['spectrum'], None, name=parameters['model_name'])
         guess = m.guess_parameters(**parameters)
         try:
@@ -234,6 +262,27 @@ class GaussModelDialog(ParameterListDialog):
         except AssertionError:
             raise RuntimeError("Model fitting failed.")
         self.post_data(data=m)
+    
+    def validate(self):
+        # Validate savgol polynomial degree
+        if not self.parameters.poly_order.get_value() > 0:
+            self.show_error('Sav-Gol polynomial must have degree greater than zero.')
+            return False
+        
+        # Validate peak min/max value
+        peak_min = self.parameters.peak_min.get_value()
+        peak_max = self.parameters.peak_max.get_value()
+        if any(x < 0 for x in (peak_min, peak_max)):
+            self.show_error('Peak min and max must be greater than or equal to zero.')
+            return False
+        
+        # Validate that min < max
+        if peak_min > peak_max:
+            self.show_error('Peak min must be less than or equal to peak max.')
+            return False
+        
+        return True
+
 
 # Register dialogs in the factory
 Factory.register('TestDialog', cls=TestDialog)

@@ -7,6 +7,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
 
 from numpy import around
+from os.path import expanduser
 
 __all__ = ['IntegerParameterWidget', 'FloatParameterWidget', 'TextParameterWidget',
            'ChoiceParameterWidget', 'SpectrumParameterWidget', 'FileParameterWidget',
@@ -18,93 +19,108 @@ class AbstractParameterWidget(BoxLayout):
     that all other widgets must adhere to.
     '''
     field = ObjectProperty(None)
-    def __init__(self, label_text='', param_name='', **kwargs):
+    def __init__(self, label_text='', param_name='', default=None, **kwargs):
         self.label_text = label_text
         self.param_name = param_name
         super().__init__(**kwargs)
-    
-    def get_parameter_tuple(self):
-        return self.param_name, self._get_parameter_value()
 
-    def _get_parameter_value(self):
+    def get_parameter_tuple(self):
+        return self.param_name, self.get_value()
+
+    def get_value(self):
         raise NotImplementedError("Parameter must define get_value()")
+
+    def set_value(self):
+        raise NotImplementedError('Paramter must define set_value()')
 
 class IntegerParameterWidget(AbstractParameterWidget):
     '''
     A text field allowing numeric characters only.
     '''
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, default=0, on_change=None, **kwargs):
         super().__init__(**kwargs)
-        Clock.schedule_once(self.add_field_widget)
-
-    def add_field_widget(self, *args):
         w = TextInput(
             multiline = False,
-            input_filter = 'int'
+            input_filter = 'int',
+            text=str(default),
         )
+        if callable(on_change): w.bind(text = on_change)
         self.field = w
         self.ids['layout'].add_widget(w)
     
-    def _get_parameter_value(self):
+    def get_value(self):
         return int(self.field.text) if len(self.field.text) > 0 else None
+    
+    def set_value(new: int):
+        self.field.text = str(new)
 
 class FloatParameterWidget(AbstractParameterWidget):
     '''
     A text field allowing numeric input and one decimal point.
     '''
-    def __init__(self, **kwargs):
+    def __init__(self, default=0, on_change=None, **kwargs):
         super().__init__(**kwargs)
-        Clock.schedule_once(self.add_field_widget)
-    
-    def add_field_widget(self, *args):
         w = TextInput(
             multiline = False,
-            input_filter = 'float'
+            input_filter = 'float',
+            text=str(default)
         )
+        if callable(on_change): w.bind(text = do_nothing)
         self.field = w
         self.ids['layout'].add_widget(w)
     
-    def _get_parameter_value(self):
+    def get_value(self):
         return float(self.field.text) if len(self.field.text) > 0 else None
+    
+    def set_value(self, new):
+        self.field.text = str(new)
     
 class TextParameterWidget(AbstractParameterWidget):
     '''
     A general text input.
     '''
-    def __init__(self, **kwargs):
+    def __init__(self, default='', on_change=None, **kwargs):
         super().__init__(**kwargs)
-        Clock.schedule_once(self.add_field_widget)
-    
-    def add_field_widget(self, *args):
         w = TextInput(
-            multiline = False
+            multiline = False,
+            text=default
         )
+        if callable(on_change): w.bind(text = on_change)
         self.field = w
         self.ids['layout'].add_widget(w)
 
-    def _get_parameter_value(self):
+    def get_value(self):
         return self.field.text
+    
+    def set_value(self, new):
+        self.field.text = new
 
 class ChoiceParameterWidget(AbstractParameterWidget):
     '''
     A widget for a dropdown menu of choices.
     '''
-    def __init__(self, choices, **kwargs):
+    def __init__(self, choices, default=0, on_change=None, **kwargs):
+        # Default is the index of the choice to use
         self.choices = choices
         super().__init__(**kwargs)
-        Clock.schedule_once(self.add_field_widget)
-    
-    def add_field_widget(self, *args):
+
+        # Boundary checking
+        default = max(0, min(default, len(self.choices)))
         w = Spinner(
-            text = self.choices[0],
+            text = self.choices[default],
             values = self.choices.copy()
         )
+        if callable(on_change): w.bind(text=on_change)
         self.field = w
         self.ids['layout'].add_widget(w)
         del self.choices
 
-    def _get_parameter_value(self):
+    def get_value(self):
         return self.field.text
+    
+    def set_value(self, new):
+        if new in self.field.values:
+            self.field.text = new
 
 class SpectrumParameterWidget(ChoiceParameterWidget):
     '''
@@ -117,8 +133,12 @@ class SpectrumParameterWidget(ChoiceParameterWidget):
             self.choice_dict = {"No spectra loaded": None}
         super().__init__(list(self.choice_dict.keys()), **kwargs)
     
-    def _get_parameter_value(self):
+    def get_value(self):
         return self.choice_dict[self.field.text]
+    
+    def set_value(self, new):
+        print('[WARNING] [SpectrumParameterWidget] Setting the value of this widget'
+              'is not supported.')
 
 class FileFieldWidget(BoxLayout):
     '''
@@ -134,39 +154,52 @@ class FileFieldWidget(BoxLayout):
     
     def get_value(self):
         return self.text_field.text
+    
+    def set_value(self, new):
+        self.text_field.text = new
 
 
 class FileParameterWidget(AbstractParameterWidget):
     '''
-    A widget for opening a dialog for selecting a file.
+    A widget for opening a dialog for selecting a file. The default
+    is the user's home directory.
     '''
-    def __init__(self, **kwargs):
+    def __init__(self, default=expanduser('~'), on_change=None, **kwargs):
         super().__init__(**kwargs)
-        Clock.schedule_once(self.add_field_widget)
     
-    def add_field_widget(self, *args):
         w = FileFieldWidget()
+        if callable(on_change): w.text_field.bind(text=on_change)
         self.field = w
         self.ids['layout'].add_widget(w)
+        self.set_value(default)
     
-    def _get_parameter_value(self):
+    def get_value(self):
         return self.field.get_value()
+    
+    def set_value(self, new):
+        self.field.set_value(new)
 
 class FloatSliderParameterWidget(AbstractParameterWidget):
     '''
     A widget for selecting a floating point number from a 
     '''
-    def __init__(self, min=0, max=10, value=5, **kwargs):
+    def __init__(self, min=0, max=10, value=5, on_change=None, **kwargs):
         super().__init__(**kwargs)
         Clock.schedule_once(lambda *args: self.add_field_widget(min, max, value))
     
     def add_field_widget(self, min, max, value):
         w = Slider(min=min, max=max, value=value, step=0.1)
+        if callable(on_change): w.bind(value = on_change)
         self.field = w
         self.ids['layout'].add_widget(w)
     
-    def _get_parameter_value(self):
+    def get_value(self):
         return self.field.value
+    
+    def set_value(self, min=None, max=None, value=None):
+        if min is not None: self.field.min = min
+        if max is not None: self.field.max = max
+        if value is not None: self.field.value = value
 
 class AccordionSlider(GridLayout):
     slider = ObjectProperty(None)
