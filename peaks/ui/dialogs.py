@@ -210,9 +210,6 @@ class SingleFileLoadDialog(ParameterListDialog):
                 default='0'
             )
         ]
-    def validate(self):
-        self.show_error('Loading data <i>b a d</i>')
-        return False
 
     def execute(self, parameters):
         spectrum = parse_csv(
@@ -247,12 +244,13 @@ class GaussModelDialog(ParameterListDialog):
                 param_name='peak_max'
             ),
             IntegerParameterWidget(
-                label_text="Savitsky-Golay polynomial order:",
+                label_text="Savitsky-Golay polynomial degree:",
                 param_name='poly_order'
             ),
             TextParameterWidget(
                 label_text='Model name:',
-                param_name='model_name'
+                param_name='model_name',
+                default='gauss'
             )
         ]
     
@@ -265,8 +263,26 @@ class GaussModelDialog(ParameterListDialog):
             raise RuntimeError("Model fitting failed.")
         self.post_data(data=m)
     
-    def validate_min_max(self):
-        pass
+    def validate(self):
+        # Validate savgol polynomial degree
+        if not self.parameters.poly_order.get_value() > 0:
+            self.show_error('Sav-Gol polynomial must have degree greater than zero.')
+            return False
+        
+        # Validate peak min/max value
+        peak_min = self.parameters.peak_min.get_value()
+        peak_max = self.parameters.peak_max.get_value()
+        if any(x < 0 for x in (peak_min, peak_max)):
+            self.show_error('Peak min and max must be greater than or equal to zero.')
+            return False
+        
+        # Validate that min < max
+        if peak_min > peak_max:
+            self.show_error('Peak min must be less than or equal to peak max.')
+            return False
+        
+        return True
+
 
 # Register dialogs in the factory
 Factory.register('TestDialog', cls=TestDialog)
