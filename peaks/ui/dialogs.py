@@ -27,10 +27,11 @@ class ParameterListDialog(Popup):
     AbstractParameterWidget
     '''
     button_ok = ObjectProperty(None)
-    
+    errlabel = ObjectProperty(None)
+
     def __init__(self, datasource, *args, **kwargs):
         self.ds = datasource
-        self.ns = ParameterNamespace()
+        self.parameters = ParameterNamespace()
         defaults = dict(
             size_hint = (None, None),
             size = (400, 600),
@@ -49,19 +50,22 @@ class ParameterListDialog(Popup):
         parameters = self.define_parameters()
         for widget in parameters:
             self.ids['content_area'].add_widget(widget)
-            setattr(self.ns, widget.param_name, widget)
+            setattr(self.parameters, widget.param_name, widget)
     
     def _execute(self):
         '''
         Gather all parameter widgets from the content area and pass
         to execution function.
         '''
+        if not self.validate(): return
         param_values = {
             name:value for (name, value) in \
             map(lambda p: p.get_parameter_tuple(), self.ids['content_area'].children)
         }
         # Wrap the call in a lambda, start in own thread
         pub.sendMessage('Data.StartThread', caller=lambda: self.execute(param_values))
+        # Finally, close the dialog
+        self.dismiss()
 
     def define_parameters(self):
         '''
@@ -72,10 +76,20 @@ class ParameterListDialog(Popup):
     
     def execute(self, parameters):
         '''
-        Function that implements tool execution. Parameters is a list of parameter
-        values in the same order as the list where parameters are defined.
+        Function that implements tool execution. Parameters is a dictionary
+        where keys are parameter name and values are parameter value.
         '''
         raise NotImplementedError("Tool execution must be defined.")
+
+    def validate(self):
+        '''
+        Use the self.ns object to access paramters as attributes, show error
+        text as necessary
+        '''
+        return True
+    
+    def show_error(self, text):
+        self.errlabel.text = text
 
     def post_data(self, data):
         pub.sendMessage('Data.Post', data=data)
@@ -97,7 +111,7 @@ class LoadDialog(Popup):
         )
         defaults.update(**kwargs)
         super().__init__(*args, **defaults)
-    
+
     def post_result(self):
         try:
             f = self.filechooser.selection[0]
@@ -196,7 +210,10 @@ class SingleFileLoadDialog(ParameterListDialog):
                 default='0'
             )
         ]
-    
+    def validate(self):
+        self.show_error('Loading data <i>b a d</i>')
+        return False
+
     def execute(self, parameters):
         spectrum = parse_csv(
             delimChoice=parameters['delimChoice'],
@@ -240,8 +257,6 @@ class GaussModelDialog(ParameterListDialog):
         ]
     
     def execute(self, parameters):
-        import time
-        time.sleep(5)
         m = ModelGauss(parameters['spectrum'], None, name=parameters['model_name'])
         guess = m.guess_parameters(**parameters)
         try:
@@ -249,6 +264,9 @@ class GaussModelDialog(ParameterListDialog):
         except AssertionError:
             raise RuntimeError("Model fitting failed.")
         self.post_data(data=m)
+    
+    def validate_min_max(self):
+        pass
 
 # Register dialogs in the factory
 Factory.register('TestDialog', cls=TestDialog)

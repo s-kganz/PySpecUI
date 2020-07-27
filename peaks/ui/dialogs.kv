@@ -4,6 +4,7 @@
 
 <ParameterListDialog>:
     button_ok: button_ok
+    errlabel: error
     BoxLayout:
         padding: 5
         spacing: 5
@@ -36,7 +37,11 @@
                 size_hint_x: None
                 width: 60
                 text: 'OK'
-                on_release: root.dismiss(); root._execute()
+                on_release: root._execute()
+            Label:
+                id: error
+                color: 1, 0, 0, 1
+                text: ''
 
 <LoadDialog>:
     filechooser: filechooser
