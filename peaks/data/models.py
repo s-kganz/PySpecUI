@@ -37,6 +37,12 @@ def r_squared(a, b):
 
     return 1 - (ss_resid / ss_tot)
 
+def gauss(x, a, mu, sigma):
+    '''
+    Create a Gaussian distribution centered around mu over the domain
+    given by x.
+    '''
+    return a*np.exp(-(x-mu)**2/(2*sigma**2))
 
 class Model(object):
     '''
@@ -112,14 +118,6 @@ class ModelGauss(Model, Trace):
         self.model_name = name
         self.id = id
 
-    @staticmethod
-    def gauss(x, a, mu, sigma):
-        '''
-        Create a Gaussian distribution centered around mu over the domain
-        given by x.
-        '''
-        return a*np.exp(-(x-mu)**2/(2*sigma**2))
-
     def evaluate_parameters(self, params):
         '''
         Return the result of evaluating the passed model parameters over the x-axis
@@ -130,7 +128,7 @@ class ModelGauss(Model, Trace):
 
         ret = np.zeros(len(x))
         for i in range(0, len(params), 3):
-            ret += self.gauss(x, params[i], params[i+1], params[i+2])
+            ret += gauss(x, params[i], params[i+1], params[i+2])
         
         return ret
 
