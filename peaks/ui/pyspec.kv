@@ -160,6 +160,9 @@
                 ContextMenuTextItem:
                     text: "Fit Gaussian peaks..."
                     on_release: Factory.GaussModelDialog(app.ds, title=self.text).open()
+                ContextMenuTextItem:
+                    text: "Polynomial detrend..."
+                    on_release: Factory.PolynomialBaselineDialog(app.ds, title=self.text).open()
         AppMenuTextItem:
             text: 'Fluff'
             ContextMenu:

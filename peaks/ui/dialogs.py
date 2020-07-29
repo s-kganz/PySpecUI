@@ -13,7 +13,9 @@ from pubsub import pub
 
 from peaks.data.datasource import parse_csv
 from peaks.data.models import ModelGauss
+from peaks.data.spectrum import Spectrum
 from peaks.ui.parameters import *
+from peaks.tools.detrend import polynomial_baseline
     
 class ParameterNamespace(object):
     '''
@@ -283,9 +285,83 @@ class GaussModelDialog(ParameterListDialog):
         
         return True
 
+class PolynomialBaselineDialog(ParameterListDialog):
+    '''
+    Dialog for removing a simple polynomial baseline from a dialog.
+    '''
+    def define_parameters(self):
+        return [
+            SpectrumParameterWidget(
+                self.ds,
+                label_text='Spectrum to fit:',
+                param_name='spectrum'
+            ),
+            IntegerParameterWidget(
+                default=1, 
+                label_text='Baseline degreee:',
+                param_name='degree'
+            ),
+            #TODO create range slider widget to replace these
+            IntegerParameterWidget(
+                default=0,
+                label_text='Lower bound of baseline region:',
+                param_name='lower_bound'
+            ),
+            IntegerParameterWidget(
+                default=0,
+                label_text='Upper bound of baseline region:',
+                param_name='upper_bound'
+            ),
+            CheckBoxParameterWidget(
+                default=False,
+                label_text='Invert baseline region:',
+                param_name='invert'
+            ),
+            TextParameterWidget(
+                default='detrended',
+                label_text='Output spectrum name:',
+                param_name='name'
+            )
+        ]
+    
+    def execute(self, parameters):
+        spec = parameters['spectrum']
+        baseline = polynomial_baseline(
+            spec.getx(),
+            spec.gety(),
+            parameters['lower_bound'],
+            parameters['upper_bound'],
+            parameters['degree'],
+            parameters['invert']
+        )
+        detrended = spec.gety() - baseline
+
+        new_spec = Spectrum.from_arrays(
+            spec.getx().copy(),
+            detrended,
+            specunit=spec.specunit,
+            frequnit=spec.frequnit,
+            name=parameters['name']
+        )
+
+        self.post_data(data=new_spec)
+    
+    def validate(self):
+        # Degree must be greater than zero
+        if not self.parameters.degree.get_value() > 0:
+            self.show_error('Baseline degree must be greater than zero.')
+            return False
+        
+        # Lower/upper bounds must be ordered right
+        if not self.parameters.lower_bound.get_value() <= self.parameters.upper_bound.get_value():
+            self.show_error('Upper bound of baseline must be greater than the lower bound.')
+            return False
+
+        return True
 
 # Register dialogs in the factory
 Factory.register('TestDialog', cls=TestDialog)
 Factory.register('LoadDialog', cls=LoadDialog)
 Factory.register('SingleFileLoadDialog', cls=SingleFileLoadDialog)
 Factory.register('GaussModelDialog', cls=GaussModelDialog)
+Factory.register('PolynomialBaselineDialog', cls=PolynomialBaselineDialog)
