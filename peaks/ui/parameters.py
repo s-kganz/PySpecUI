@@ -5,13 +5,14 @@ from kivy.uix.spinner import Spinner
 from kivy.uix.slider import Slider
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
+from kivy.uix.checkbox import CheckBox
 
 from numpy import around
 from os.path import expanduser
 
 __all__ = ['IntegerParameterWidget', 'FloatParameterWidget', 'TextParameterWidget',
            'ChoiceParameterWidget', 'SpectrumParameterWidget', 'FileParameterWidget',
-           'FloatSliderParameterWidget', 'AccordionSlider']
+           'FloatSliderParameterWidget', 'AccordionSlider', 'CheckBoxParameterWidget']
 
 class AbstractParameterWidget(BoxLayout):
     '''
@@ -185,9 +186,7 @@ class FloatSliderParameterWidget(AbstractParameterWidget):
     '''
     def __init__(self, min=0, max=10, value=5, on_change=None, **kwargs):
         super().__init__(**kwargs)
-        Clock.schedule_once(lambda *args: self.add_field_widget(min, max, value))
     
-    def add_field_widget(self, min, max, value):
         w = Slider(min=min, max=max, value=value, step=0.1)
         if callable(on_change): w.bind(value = on_change)
         self.field = w
@@ -200,6 +199,22 @@ class FloatSliderParameterWidget(AbstractParameterWidget):
         if min is not None: self.field.min = min
         if max is not None: self.field.max = max
         if value is not None: self.field.value = value
+
+class CheckBoxParameterWidget(AbstractParameterWidget):
+    def __init__(self, value=True, on_change=None, **kwargs):
+        super().__init__(**kwargs)
+
+        w = CheckBox(active=value)
+        if callable(on_change): w.bind(active=on_change)
+        self.field = w
+        self.ids['layout'].add_widget(w)
+    
+    def get_value(self):
+        return self.field.active
+    
+    def set_value(self, new):
+        self.field.active = new
+
 
 class AccordionSlider(GridLayout):
     slider = ObjectProperty(None)
