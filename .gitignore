@@ -8,6 +8,7 @@ kivy_env
 # dev help
 examples
 toydata
+dev_notebooks
 
 # Build files
 build 
