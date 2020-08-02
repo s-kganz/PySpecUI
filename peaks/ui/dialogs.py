@@ -16,6 +16,7 @@ from peaks.data.models import ModelGauss
 from peaks.data.spectrum import Spectrum
 from peaks.ui.parameters import *
 from peaks.tools.detrend import polynomial_baseline
+from peaks.tools.transform import to_absorbance, to_transmittance, rescale
     
 class ParameterNamespace(object):
     '''
@@ -359,9 +360,121 @@ class PolynomialBaselineDialog(ParameterListDialog):
 
         return True
 
+class ToAbsorbanceDialog(ParameterListDialog):
+    '''
+    Dialog for converting a transmittance spectrum to an absorbance spectrum.
+    '''
+    def define_parameters(self):
+        return [
+            SpectrumParameterWidget(
+                self.ds,
+                label_text='Spectrum to transform:',
+                param_name='spectrum'
+            ),
+            TextParameterWidget(
+                default='absorbance',
+                label_text='Output spectrum name:',
+                param_name='name'
+            )
+        ]
+    
+    def execute(self, parameters):
+        spec = parameters['spectrum']
+        abs = to_absorbance(spec.gety())
+
+        new_spec = Spectrum.from_arrays(
+            spec.getx().copy(),
+            abs,
+            specunit=spec.specunit,
+            frequnit=spec.frequnit,
+            name=parameters['name']
+        )
+        self.post_data(data=new_spec)
+
+class ToTransmittanceDialog(ParameterListDialog):
+    '''
+    Dialog for converting a transmittance spectrum to an absorbance spectrum.
+    '''
+    def define_parameters(self):
+        return [
+            SpectrumParameterWidget(
+                self.ds,
+                label_text='Spectrum to transform:',
+                param_name='spectrum'
+            ),
+            TextParameterWidget(
+                default='transmittance',
+                label_text='Output spectrum name:',
+                param_name='name'
+            )
+        ]
+    
+    def execute(self, parameters):
+        spec = parameters['spectrum']
+        trans = to_transmittance(spec.gety())
+
+        new_spec = Spectrum.from_arrays(
+            spec.getx().copy(),
+            trans,
+            specunit=spec.specunit,
+            frequnit=spec.frequnit,
+            name=parameters['name']
+        )
+        self.post_data(data=new_spec)
+
+class RescaleDialog(ParameterListDialog):
+    '''
+    Dialog for converting a transmittance spectrum to an absorbance spectrum.
+    '''
+    def define_parameters(self):
+        return [
+            SpectrumParameterWidget(
+                self.ds,
+                label_text='Spectrum to transform:',
+                param_name='spectrum'
+            ),
+            FloatParameterWidget(
+                default=0.0,
+                label_text='Minimum value:',
+                param_name='new_min'
+            ),
+            FloatParameterWidget(
+                default=1.0,
+                label_text='Maximum value:',
+                param_name='new_max'
+            ),
+            TextParameterWidget(
+                default='rescaled',
+                label_text='Output spectrum name:',
+                param_name='name'
+            )
+        ]
+    
+    def validate(self):
+        if not self.parameters.new_min.get_value() < self.parameters.new_max.get_value():
+            self.show_error('New minimum must be strictly less than the new maximum.')
+            return False
+        return True
+
+    def execute(self, parameters):
+        spec = parameters['spectrum']
+        rescaled = rescale(spec.gety(), parameters['new_min'], parameters['new_max'])
+
+        new_spec = Spectrum.from_arrays(
+            spec.getx().copy(),
+            rescaled,
+            specunit=spec.specunit,
+            frequnit=spec.frequnit,
+            name=parameters['name']
+        )
+        self.post_data(data=new_spec)
+
 # Register dialogs in the factory
 Factory.register('TestDialog', cls=TestDialog)
 Factory.register('LoadDialog', cls=LoadDialog)
 Factory.register('SingleFileLoadDialog', cls=SingleFileLoadDialog)
 Factory.register('GaussModelDialog', cls=GaussModelDialog)
 Factory.register('PolynomialBaselineDialog', cls=PolynomialBaselineDialog)
+Factory.register('ToAbsorbanceDialog', cls=ToAbsorbanceDialog)
+Factory.register('ToTransmittanceDialog', cls=ToTransmittanceDialog)
+Factory.register('RescaleDialog', cls=RescaleDialog)

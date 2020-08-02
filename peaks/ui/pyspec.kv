@@ -163,6 +163,15 @@
                 ContextMenuTextItem:
                     text: "Polynomial detrend..."
                     on_release: Factory.PolynomialBaselineDialog(app.ds, title=self.text).open()
+                ContextMenuTextItem:
+                    text: "To Absorbance..."
+                    on_release: Factory.ToAbsorbanceDialog(app.ds, title=self.text).open()
+                ContextMenuTextItem:
+                    text: "To Transmittance..."
+                    on_release: Factory.ToTransmittanceDialog(app.ds, title=self.text).open()
+                ContextMenuTextItem:
+                    text: 'Rescale...'
+                    on_release: Factory.RescaleDialog(app.ds, title=self.text).open()
         AppMenuTextItem:
             text: 'Fluff'
             ContextMenu:
