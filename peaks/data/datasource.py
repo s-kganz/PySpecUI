@@ -35,20 +35,6 @@ class DataSource(object):
         '''
         self.trace_counter += 1
         return self.trace_counter
-        
-    def add_model(self, model):
-        '''
-        Add a newly created model to the internal manager.
-        '''
-        new_id = self._get_next_id()
-        model.id = new_id
-        self.traces.append(model)
-        pub.sendMessage(
-            'UI.Tree.AddTrace', 
-            trace=self.traces[len(self.traces)-1], 
-            type='model'
-        )
-        return new_id
 
     def delete_trace(self, target_id):
         '''
@@ -62,7 +48,7 @@ class DataSource(object):
     
     def get_trace(self, t_id):
         '''
-        Return spectrum object corresponding to the given id. Returns
+        Return trace object corresponding to the given id.
         Raises value error if no spectrum was found.
         '''
         for trace in self.traces:
@@ -101,6 +87,9 @@ class DataSource(object):
         else:
             # unknown type
             return data
+    
+    def is_queue_empty(self):
+        return self._ingest_queue.empty()
     
     def _post_data(self, data):
         '''
