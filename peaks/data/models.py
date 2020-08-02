@@ -225,12 +225,12 @@ class ModelGauss(Model, Trace):
         '''
         Extract a section of or extrapolate this model to a custom domain.
         '''
-        if not self.params:
+        if self.params is None:
             return
         ret = np.zeros(len(x))
 
         for i in range(0, len(self.params), 3):
-            ret += self.gauss(x, params[i], params[i+1], params[i+2])
+            ret += gauss(x, self.params[i], self.params[i+1], self.params[i+2])
 
         return ret
     
