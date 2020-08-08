@@ -34,48 +34,6 @@ class AbstractParameterWidget(BoxLayout):
     def set_value(self):
         raise NotImplementedError('Paramter must define set_value()')
 
-class IntegerParameterWidget(AbstractParameterWidget):
-    '''
-    A text field allowing numeric characters only.
-    '''
-    def __init__(self, *args, default=0, on_change=None, **kwargs):
-        super().__init__(**kwargs)
-        w = TextInput(
-            multiline = False,
-            input_filter = 'int',
-            text=str(default),
-        )
-        if callable(on_change): w.bind(text = on_change)
-        self.field = w
-        self.ids['layout'].add_widget(w)
-    
-    def get_value(self):
-        return int(self.field.text) if len(self.field.text) > 0 else None
-    
-    def set_value(new: int):
-        self.field.text = str(new)
-
-class FloatParameterWidget(AbstractParameterWidget):
-    '''
-    A text field allowing numeric input and one decimal point.
-    '''
-    def __init__(self, default=0, on_change=None, **kwargs):
-        super().__init__(**kwargs)
-        w = TextInput(
-            multiline = False,
-            input_filter = 'float',
-            text=str(default)
-        )
-        if callable(on_change): w.bind(text = do_nothing)
-        self.field = w
-        self.ids['layout'].add_widget(w)
-    
-    def get_value(self):
-        return float(self.field.text) if len(self.field.text) > 0 else None
-    
-    def set_value(self, new):
-        self.field.text = str(new)
-    
 class TextParameterWidget(AbstractParameterWidget):
     '''
     A general text input.
@@ -95,6 +53,34 @@ class TextParameterWidget(AbstractParameterWidget):
     
     def set_value(self, new):
         self.field.text = new
+
+class IntegerParameterWidget(TextParameterWidget):
+    '''
+    A text field allowing numeric characters only.
+    '''
+    def __init__(self, *args, default=0, on_change=None, **kwargs):
+        super().__init__(default=str(default), on_change=on_change, **kwargs)
+        self.field.input_filter = 'int'
+    
+    def get_value(self):
+        return int(self.field.text) if len(self.field.text) > 0 else None
+    
+    def set_value(self, new):
+        self.field.text = str(new)
+
+class FloatParameterWidget(TextParameterWidget):
+    '''
+    A text field allowing numeric input and one decimal point.
+    '''
+    def __init__(self, default=0, on_change=None, **kwargs):
+        super().__init__(default=str(default), on_change=on_change, **kwargs)
+        self.field.input_filter = 'float'
+    
+    def get_value(self):
+        return float(self.field.text) if len(self.field.text) > 0 else None
+    
+    def set_value(self, new):
+        self.field.text = str(new)
 
 class ChoiceParameterWidget(AbstractParameterWidget):
     '''

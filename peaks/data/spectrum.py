@@ -21,20 +21,16 @@ class Spectrum(Trace):
     '''
 
     def __init__(self, df, id=None, specunit="", frequnit="",
-                 name="", freqcol=0, speccol=None):
+                 name="", freqcol=0, speccol=1):
         
         super(Spectrum, self).__init__()
         
         # Assign this spectrum an ID
         self.id = id
 
-        # Assume that the passed df only has two columns
-        # TODO refactor to allow multi-column support.
-        speccol = 1 if freqcol == 0 else 0
-
-        self.data = df.copy()
         self.specname = df.columns[speccol]
         self.freqname = df.columns[freqcol]
+        self.data = df.iloc[:, [speccol, freqcol]].reset_index(drop=True).copy()
 
         self.specunit = specunit
         self.frequnit = frequnit
@@ -54,8 +50,9 @@ class Spectrum(Trace):
         '''
         Initialize a new Spectrum object from a data frame.
         '''
-        df_slice = df[[freqcol, speccol]]
-        return Spectrum(df, id, specunit=specunit, frequnit=frequnit,
+        df_slice = df.iloc[:, [freqcol, speccol]].reset_index(drop=True).copy()
+
+        return Spectrum(df_slice, id, specunit=specunit, frequnit=frequnit,
                         name=name, freqcol=0, speccol=1)
 
     @staticmethod
