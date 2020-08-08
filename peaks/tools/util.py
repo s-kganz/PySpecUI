@@ -1,5 +1,5 @@
 '''
-Util functions for working with spectra.
+Utility functions for working with spectra.
 '''
 import numpy as np
 

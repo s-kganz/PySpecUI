@@ -8,6 +8,7 @@ from kivy_garden.graph import MeshLinePlot
 import pandas as pd
 from os.path import basename
 from random import random
+from copy import deepcopy
 
 # NAMESPACE MODULES
 from .data_helpers import Trace
@@ -37,11 +38,15 @@ class Spectrum(Trace):
 
         self.name = name
         self.is_plotted = False
+        self.history = []
 
         # Determine min/max. Spectra are immutable so this can just
         # be calculated once
         self._bounds = min(self.getx()), max(self.getx()), min(self.gety()), max(self.gety())
-        self.mesh = MeshLinePlot(color=[random(), random(), random(), 1])
+        # The mesh should not be instantiated unless in a graphics context. Otherwise the kernel
+        # dies. No idea why.
+        self._color = [random(), random(), random()]
+        self.mesh = None
         self._update_mesh()
 
     @staticmethod
@@ -62,6 +67,131 @@ class Spectrum(Trace):
         return Spectrum(df, id, specunit=specunit, frequnit=frequnit,
                         name=name, freqcol=0, speccol=1)
 
+    # Mutators
+    def apply_spec(self, func, *args, **kwargs):
+        '''
+        Apply a function to the spectral data of this object, returning a new
+        object with the function applied.
+        '''
+        if not callable(func):
+            raise ValueError('Spectrum.apply_spec: func must be a callable!')
+        new_spec = func(self.gety().copy(), *args, **kwargs)
+        new_s = Spectrum.from_arrays(
+            self.getx().copy(), 
+            new_spec, 
+            id=-1, 
+            specunit=self.specunit,
+            frequnit=self.frequnit,
+            name=self.name
+        )
+        new_s.history = deepcopy(self.history)
+        new_s.history.append({
+            'type': 'spec',
+            'callable': func,
+            'args': args,
+            'kwargs': kwargs
+        })
+        return new_s
+    
+    def apply_freq(self, func, *args, **kwargs):
+        '''
+        Apply a function to the frequency data of this object, returning a new
+        object with the function applied.
+        '''
+        if not callable(func):
+            raise ValueError('Spectrum.apply_freq: func must be a callable!')
+        new_freq = func(self.getx().copy(), *args, **kwargs)
+        new_s = Spectrum.from_arrays(
+            new_freq, 
+            self.gety().copy(), 
+            id=-1, 
+            specunit=self.specunit,
+            frequnit=self.frequnit,
+            name=self.name
+        )
+        new_s.history = deepcopy(self.history)
+        new_s.history.append({
+            'type': 'freq',
+            'callable': func,
+            'args': args,
+            'kwargs': kwargs
+        })
+        return new_s
+
+    def apply_spec_freq(self, func, *args, **kwargs):
+        '''
+        Apply a function to the frequency and spectral data of this object, returning a new
+        object with the function applied.
+        '''
+        if not callable(func):
+            raise ValueError('Spectrum.apply_spec_freq: func must be a callable!')
+        new_freq, new_spec = func(self.getx().copy(), self.gety().copy(), *args, **kwargs)
+        new_s = Spectrum.from_arrays(
+            new_freq, 
+            new_spec, 
+            id=-1, 
+            specunit=self.specunit,
+            frequnit=self.frequnit,
+            name=self.name
+        )
+        new_s.history = deepcopy(self.history)
+        new_s.history.append({
+            'type': 'spec_freq',
+            'callable': func,
+            'args': args,
+            'kwargs': kwargs
+        })
+        return new_s
+
+    def apply_object(self, func, *args, **kwargs):
+        '''
+        Apply a function to this object and returns the resulting
+        Spectrum.
+        '''
+        if not callable(func):
+            raise ValueError('Spectrum.apply_object: func must be a callable!')
+        
+        new_obj = func(Spectrum.from_arrays(
+            self.getx(),
+            self.gety(),
+            id=-1,
+            specunit=self.specunit,
+            frequnit=self.frequnit,
+            name=self.name
+        ), *args, **kwargs)
+
+        new_obj.history = deepcopy(self.history)
+        new_obj.history.append(
+            {
+                'type': 'object',
+                'callable': func,
+                'args': args,
+                'kwargs': kwargs
+            }
+        )
+
+        return new_obj
+
+    def apply_history(self, other):
+        '''
+        Returns the spectrum object resulting from running all
+        apply_* calls in another spectrum's history.
+        '''
+        ret = self
+        for entry in other.history:
+            if entry['type'] == 'spec':
+                ret = ret.apply_spec(entry['callable'], *entry['args'], **entry['kwargs'])
+            elif entry['type'] == 'freq':
+                ret = ret.apply_freq(entry['callable'], *entry['args'], **entry['kwargs'])
+            elif entry['type'] == 'spec_freq':
+                ret = ret.apply_spec_freq(entry['callable'], *entry['args'], **entry['kwargs'])
+            elif entry['type'] == 'object':
+                ret = ret.apply_object(entry['callable'], *entry['args'], **entry['kwargs'])
+            else:
+                raise ValueError('Spectrum.apply_history: Unrecognized spectrum operation'
+                                 ': {}'.format(entry['type']))
+        return ret
+
     # Trace interface implementation
     def getx(self):
         return self.data[self.freqname]
@@ -79,9 +209,13 @@ class Spectrum(Trace):
         '''
         Update the points in the mesh
         '''
-        self.mesh.points = zip(self.getx(), self.gety())
+        if self.mesh is not None:
+            self.mesh.points = zip(self.getx(), self.gety())
 
     def get_mesh(self):
+        if self.mesh is None:
+            self.mesh = MeshLinePlot(color=self._color)
+            self.mesh.points = zip(self.getx(), self.gety())
         return self.mesh
 
     def __str__(self):

@@ -19,3 +19,13 @@ def polynomial_baseline(x, y, left_bound, right_bound, degree=1, invert=False):
     baseline_y = y[mask]
 
     return np.polyval(np.polyfit(baseline_x, baseline_y, degree), x)
+
+def polynomial_detrend(x, y, left_bound, right_bound, degree=1, invert=False):
+    '''
+    Return the detrended x and y arrays after subtracting the baseline resulting from a 
+    call to polynomial_baseline.
+    '''
+    return x, y - polynomial_baseline(
+        x, y, 
+        left_bound, right_bound, 
+        degree=degree, invert=invert)

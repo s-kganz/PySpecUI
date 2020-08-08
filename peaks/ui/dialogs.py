@@ -15,7 +15,7 @@ from peaks.data.datasource import parse_csv
 from peaks.data.models import ModelGauss
 from peaks.data.spectrum import Spectrum
 from peaks.ui.parameters import *
-from peaks.tools.detrend import polynomial_baseline
+from peaks.tools.detrend import polynomial_detrend
 from peaks.tools.transform import to_absorbance, to_transmittance, rescale
     
 class ParameterNamespace(object):
@@ -326,24 +326,14 @@ class PolynomialBaselineDialog(ParameterListDialog):
         ]
     
     def execute(self, parameters):
-        spec = parameters['spectrum']
-        baseline = polynomial_baseline(
-            spec.getx(),
-            spec.gety(),
+        new_spec = parameters['spectrum'].apply_spec_freq(
+            polynomial_detrend,
             parameters['lower_bound'],
             parameters['upper_bound'],
             parameters['degree'],
-            parameters['invert']
+            invert=parameters['invert']
         )
-        detrended = spec.gety() - baseline
-
-        new_spec = Spectrum.from_arrays(
-            spec.getx().copy(),
-            detrended,
-            specunit=spec.specunit,
-            frequnit=spec.frequnit,
-            name=parameters['name']
-        )
+        new_spec.name = parameters['name']
 
         self.post_data(data=new_spec)
     
@@ -379,16 +369,10 @@ class ToAbsorbanceDialog(ParameterListDialog):
         ]
     
     def execute(self, parameters):
-        spec = parameters['spectrum']
-        abs = to_absorbance(spec.gety())
-
-        new_spec = Spectrum.from_arrays(
-            spec.getx().copy(),
-            abs,
-            specunit=spec.specunit,
-            frequnit=spec.frequnit,
-            name=parameters['name']
+        new_spec = parameters['spectrum'].apply_spec(
+            to_absorbance
         )
+        
         self.post_data(data=new_spec)
 
 class ToTransmittanceDialog(ParameterListDialog):
@@ -410,16 +394,10 @@ class ToTransmittanceDialog(ParameterListDialog):
         ]
     
     def execute(self, parameters):
-        spec = parameters['spectrum']
-        trans = to_transmittance(spec.gety())
-
-        new_spec = Spectrum.from_arrays(
-            spec.getx().copy(),
-            trans,
-            specunit=spec.specunit,
-            frequnit=spec.frequnit,
-            name=parameters['name']
+        new_spec = parameters['spectrum'].apply_spec(
+            to_transmittance
         )
+
         self.post_data(data=new_spec)
 
 class RescaleDialog(ParameterListDialog):
@@ -457,16 +435,12 @@ class RescaleDialog(ParameterListDialog):
         return True
 
     def execute(self, parameters):
-        spec = parameters['spectrum']
-        rescaled = rescale(spec.gety(), parameters['new_min'], parameters['new_max'])
-
-        new_spec = Spectrum.from_arrays(
-            spec.getx().copy(),
-            rescaled,
-            specunit=spec.specunit,
-            frequnit=spec.frequnit,
-            name=parameters['name']
+        new_spec = parameters['spectrum'].apply_spec(
+            rescale,
+            parameters['new_min'],
+            parameters['new_max']
         )
+        new_spec.name = parameters['name']
         self.post_data(data=new_spec)
 
 # Register dialogs in the factory

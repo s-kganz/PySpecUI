@@ -11,7 +11,7 @@ env: PATH=/c/Python37:/c/Python37/Scripts:$PATH
 install:
   - pip install -r requirements.txt
   - pip install -e .
-before_deploy:
+script:
   - pyinstaller "PySpecUI.spec"
   - tar -cf PySpecUI_executable.tar dist
   - tar -cf PySpecUI_source.tar peaks
