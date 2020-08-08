@@ -10,6 +10,7 @@ before_install:
 env: PATH=/c/Python37:/c/Python37/Scripts:$PATH
 install:
   - pip install -r requirements.txt
+  - pip install -e .
 script:
   - pytest tests
 before_deploy:
