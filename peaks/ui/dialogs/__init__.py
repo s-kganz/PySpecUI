@@ -1,5 +1,8 @@
 from .detrend import (
-    PolynomialBaselineDialog, 
+    PolynomialBaselineDialog,
+    BoxcarSmoothDialog,
+    TriangleSmoothDialog,
+    GaussianSmoothDialog
 )
 
 from .io import (
@@ -19,6 +22,9 @@ from .transform import (
 from kivy.factory import Factory
 
 Factory.register('PolynomialBaselineDialog', cls=PolynomialBaselineDialog)
+Factory.register('BoxcarSmoothDialog', cls=BoxcarSmoothDialog)
+Factory.register('TriangleSmoothDialog', cls=TriangleSmoothDialog)
+Factory.register('GaussianSmoothDialog', cls=GaussianSmoothDialog)
 Factory.register('SingleFileLoadDialog', cls=SingleFileLoadDialog)
 Factory.register('GaussModelDialog', cls=GaussModelDialog)
 Factory.register('RescaleDialog', cls=RescaleDialog)

@@ -1,6 +1,11 @@
 from .common import ParameterListDialog
 from peaks.ui.parameters import *
-from peaks.tools.detrend import polynomial_detrend
+from peaks.tools.detrend import (
+    polynomial_detrend,
+    boxcar_smooth, 
+    triangular_smooth, 
+    gaussian_smooth
+)
 
 class BoxcarSmoothDialog(ParameterListDialog):
     '''
@@ -20,7 +25,7 @@ class BoxcarSmoothDialog(ParameterListDialog):
                 param_name='winlen'
             ),
             TextParameterWidget(
-                default='smoothed',
+                default='smoothed_boxcar',
                 label_text='Output spectrum name:',
                 param_name='output_name'
             )
@@ -34,7 +39,105 @@ class BoxcarSmoothDialog(ParameterListDialog):
         return True
     
     def execute(self, parameters):
+        new_spec = parameters['spectrum'].apply_spec(
+            boxcar_smooth,
+            parameters['winlen']
+        )
+        new_spec.name = parameters['output_name']
+
+        self.post_data(data=new_spec)
+
+class TriangleSmoothDialog(ParameterListDialog):
+    '''
+    Dialog for generating a spectrum smoothed by convolution
+    with a triangular window.
+    '''
+    def define_parameters(self):
+        return [
+            SpectrumParameterWidget(
+                self.ds,
+                label_text='Spectrum to smooth:',
+                param_name='spectrum'
+            ),
+            IntegerParameterWidget(
+                default=10,
+                label_text='Window length (in points):',
+                param_name='winlen'
+            ),
+            TextParameterWidget(
+                default='smoothed_triangular',
+                label_text='Output spectrum name:',
+                param_name='output_name'
+            )
+        ]
+    
+    def validate(self):
+        if self.parameters.winlen.get_value() <= 0:
+            self.show_error('Window length must be greater than zero.')
+            return False
         
+        return True
+    
+    def execute(self, parameters):
+        new_spec = parameters['spectrum'].apply_spec(
+            triangular_smooth,
+            parameters['winlen']
+        )
+        new_spec.name = parameters['output_name']
+
+        self.post_data(data=new_spec)
+
+class GaussianSmoothDialog(ParameterListDialog):
+    '''
+    Dialog for generating a spectrum smoothed by convolution
+    with a Gaussian window.
+    '''
+    def define_parameters(self):
+        return [
+            SpectrumParameterWidget(
+                self.ds,
+                label_text='Spectrum to smooth:',
+                param_name='spectrum'
+            ),
+            IntegerParameterWidget(
+                default=10,
+                label_text='Window length (in points):',
+                param_name='winlen'
+            ),
+            FloatParameterWidget(
+                default=1.0,
+                label_text='Shape parameter:',
+                param_name='shape'
+            ),
+            FloatParameterWidget(
+                default=1.0,
+                label_text='Peak width:',
+                param_name='sigma'
+            ),
+            TextParameterWidget(
+                default='smoothed_gaussian',
+                label_text='Output spectrum name:',
+                param_name='output_name'
+            )
+        ]
+    
+    def validate(self):
+        if self.parameters.winlen.get_value() <= 0:
+            self.show_error('Window length must be greater than zero.')
+            return False
+        
+        return True
+    
+    def execute(self, parameters):
+        new_spec = parameters['spectrum'].apply_spec(
+            gaussian_smooth,
+            parameters['winlen'],
+            parameters['shape'],
+            parameters['sigma']
+        )
+        new_spec.name = parameters['output_name']
+
+        self.post_data(data=new_spec)
 
 class PolynomialBaselineDialog(ParameterListDialog):
     '''

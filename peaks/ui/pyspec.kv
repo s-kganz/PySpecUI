@@ -157,12 +157,30 @@
                 ContextMenuTextItem:
                     text: "Load delimited file..."
                     on_release: Factory.SingleFileLoadDialog(app.ds, title=self.text).open()
+        AppMenuTextItem:
+            text: 'Model'
+            ContextMenu:
                 ContextMenuTextItem:
                     text: "Fit Gaussian peaks..."
                     on_release: Factory.GaussModelDialog(app.ds, title=self.text).open()
+        AppMenuTextItem:
+            text: 'Smooth/Detrend'
+            ContextMenu:
                 ContextMenuTextItem:
                     text: "Polynomial detrend..."
                     on_release: Factory.PolynomialBaselineDialog(app.ds, title=self.text).open()
+                ContextMenuTextItem:
+                    text: "Moving average..."
+                    on_release: Factory.BoxcarSmoothDialog(app.ds, title=self.text).open()
+                ContextMenuTextItem:
+                    text: "Triangular window..."
+                    on_release: Factory.TriangleSmoothDialog(app.ds, title=self.text).open()
+                ContextMenuTextItem:
+                    text: "Gaussian window..."
+                    on_release: Factory.GaussianSmoothDialog(app.ds, title=self.text).open()
+        AppMenuTextItem:
+            text: 'Transform'
+            ContextMenu:
                 ContextMenuTextItem:
                     text: "To Absorbance..."
                     on_release: Factory.ToAbsorbanceDialog(app.ds, title=self.text).open()
@@ -171,10 +189,4 @@
                     on_release: Factory.ToTransmittanceDialog(app.ds, title=self.text).open()
                 ContextMenuTextItem:
                     text: 'Rescale...'
-                    on_release: Factory.RescaleDialog(app.ds, title=self.text).open()
-        AppMenuTextItem:
-            text: 'Fluff'
-            ContextMenu:
-                ContextMenuTextItem:
-                    text: 'Say hello!'
-                    on_release: print('Hello!')
+                    on_release: Factory.RescaleDialog(app.ds, title=self.text).open()              
