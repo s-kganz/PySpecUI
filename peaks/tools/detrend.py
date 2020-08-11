@@ -2,6 +2,7 @@
 Functions for computing baselines of spectra.
 '''
 import scipy.signal as signal
+from scipy.signal import savgol_filter
 import numpy as np
 from .util import subset
 

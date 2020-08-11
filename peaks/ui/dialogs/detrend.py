@@ -4,7 +4,8 @@ from peaks.tools.detrend import (
     polynomial_detrend,
     boxcar_smooth, 
     triangular_smooth, 
-    gaussian_smooth
+    gaussian_smooth,
+    savgol_filter
 )
 
 class BoxcarSmoothDialog(ParameterListDialog):
@@ -134,6 +135,58 @@ class GaussianSmoothDialog(ParameterListDialog):
             parameters['winlen'],
             parameters['shape'],
             parameters['sigma']
+        )
+        new_spec.name = parameters['output_name']
+
+        self.post_data(data=new_spec)
+
+class SavgolSmoothDialog(ParameterListDialog):
+    '''
+    Dialog for generating a spectrum smoothed by convolution
+    with a Gaussian window.
+    '''
+    def define_parameters(self):
+        return [
+            SpectrumParameterWidget(
+                self.ds,
+                label_text='Spectrum to smooth:',
+                param_name='spectrum'
+            ),
+            IntegerParameterWidget(
+                default=11,
+                label_text='Window length (in points):',
+                param_name='winlen'
+            ),
+            IntegerParameterWidget(
+                default=1,
+                label_text='Polynomial Order:',
+                param_name='polyorder'
+            ),
+            TextParameterWidget(
+                default='smoothed_savgol',
+                label_text='Output spectrum name:',
+                param_name='output_name'
+            )
+        ]
+    
+    def validate(self):
+        if self.parameters.winlen.get_value() <= 0:
+            self.show_error('Window length must be greater than zero.')
+            return False
+        if not self.parameters.winlen.get_value() % 2:
+            self.show_error('Window length must be odd.')
+            return False
+        if not self.parameters.polyorder.get_value() >= 0:
+            self.show_error('Polynomial order must be greater than zero.')
+            return False
+        
+        return True
+    
+    def execute(self, parameters):
+        new_spec = parameters['spectrum'].apply_spec(
+            savgol_filter,
+            parameters['winlen'],
+            parameters['polyorder']
         )
         new_spec.name = parameters['output_name']
 

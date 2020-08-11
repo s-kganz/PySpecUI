@@ -122,6 +122,7 @@
                     DynamicTabbedPanel:
                         # Update this value with the number of tabs
                         tab_width: 100
+                        tab_height: 30
                         id: tab_panel
                         default_tab: hierarchy_tab
                         size_hint_x: 0.5
@@ -170,14 +171,17 @@
                     text: "Polynomial detrend..."
                     on_release: Factory.PolynomialBaselineDialog(app.ds, title=self.text).open()
                 ContextMenuTextItem:
-                    text: "Moving average..."
+                    text: "Boxcar filter..."
                     on_release: Factory.BoxcarSmoothDialog(app.ds, title=self.text).open()
                 ContextMenuTextItem:
-                    text: "Triangular window..."
+                    text: "Triangular filter..."
                     on_release: Factory.TriangleSmoothDialog(app.ds, title=self.text).open()
                 ContextMenuTextItem:
-                    text: "Gaussian window..."
+                    text: "Gaussian filter..."
                     on_release: Factory.GaussianSmoothDialog(app.ds, title=self.text).open()
+                ContextMenuTextItem:
+                    text: 'Savitsky-Golay filter...'
+                    on_release: Factory.SavgolSmoothDialog(app.ds, title=self.text).open()
         AppMenuTextItem:
             text: 'Transform'
             ContextMenu:
