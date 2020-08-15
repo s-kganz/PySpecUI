@@ -182,6 +182,9 @@
                 ContextMenuTextItem:
                     text: 'Savitsky-Golay filter...'
                     on_release: Factory.SavgolSmoothDialog(app.ds, title=self.text).open()
+                ContextMenuTextItem:
+                    text: 'Rolling Ball filter...'
+                    on_release: Factory.RollingBallDialog(app.ds, title=self.text).open()
         AppMenuTextItem:
             text: 'Transform'
             ContextMenu:

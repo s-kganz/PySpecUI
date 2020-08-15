@@ -3,7 +3,8 @@ from .detrend import (
     BoxcarSmoothDialog,
     TriangleSmoothDialog,
     GaussianSmoothDialog,
-    SavgolSmoothDialog
+    SavgolSmoothDialog,
+    RollingBallDialog
 )
 
 from .io import (
@@ -32,3 +33,4 @@ Factory.register('RescaleDialog', cls=RescaleDialog)
 Factory.register('ToAbsorbanceDialog', cls=ToAbsorbanceDialog)
 Factory.register('ToTransmittanceDialog', cls=ToTransmittanceDialog)
 Factory.register('SavgolSmoothDialog', cls=SavgolSmoothDialog)
+Factory.register('RollingBallDialog', cls=RollingBallDialog)

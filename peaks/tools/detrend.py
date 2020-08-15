@@ -63,3 +63,38 @@ def gaussian_smooth(y, winlen, p, sigma):
     window /= np.sum(window)
 
     return np.convolve(y, window, mode='same')
+
+def rolling_ball(y, minmax_len, smooth_len):
+    '''
+    Port of the rolling ball algorithm as implemented in
+    Kneen and Annegarn (1996). Performs minimization, followed
+    by maximization, on a sliding window given by minmax_len. The
+    signal is then smoothed by applying a boxcar filter with neighborhood
+    smooth_len. The effect of the process is to preserve high-frequency 
+    features in the spectrum while removing gradual trendlines.
+
+    Returns the background determined by this procedure.
+    '''    
+    mins = np.zeros(len(y))
+    maxs = np.zeros(len(y))
+    background = np.zeros(len(y))
+    
+    # Minimize on moving window
+    for i in range(len(y)):
+        window_left = max(0, i - minmax_len)
+        window_right = min(i + minmax_len + 1, len(y))
+        mins[i] = y[window_left:window_right].min()
+    
+    # Maximize on moving window
+    for i in range(len(mins)):
+        window_left = max(0, i - minmax_len)
+        window_right = min(i + minmax_len + 1, len(mins))
+        maxs[i] = mins[window_left:window_right].max()
+    
+    # Smooth on the other window parameter
+    for i in range(len(maxs)):
+        window_left = max(0, i - smooth_len)
+        window_right = min(i + minmax_len + 1, len(maxs))
+        background[i] = np.mean(maxs[window_left:window_right])
+    
+    return y - background

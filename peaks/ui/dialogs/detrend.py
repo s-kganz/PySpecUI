@@ -5,7 +5,8 @@ from peaks.tools.detrend import (
     boxcar_smooth, 
     triangular_smooth, 
     gaussian_smooth,
-    savgol_filter
+    savgol_filter,
+    rolling_ball
 )
 
 class BoxcarSmoothDialog(ParameterListDialog):
@@ -252,6 +253,54 @@ class PolynomialBaselineDialog(ParameterListDialog):
         # Lower/upper bounds must be ordered right
         if not self.parameters.lower_bound.get_value() <= self.parameters.upper_bound.get_value():
             self.show_error('Upper bound of baseline must be greater than the lower bound.')
+            return False
+
+        return True
+
+class RollingBallDialog(ParameterListDialog):
+    '''
+    Dialog for applying the rolling ball smoothing algorithm
+    to a spectrum.
+    '''
+    def define_parameters(self):
+        return [
+           SpectrumParameterWidget(
+                self.ds,
+                label_text='Spectrum to detrend:',
+                param_name='spectrum'
+            ),
+            IntegerParameterWidget(
+                default=15, 
+                label_text='Min/max window length:',
+                param_name='minmax_winlen'
+            ),
+            IntegerParameterWidget(
+                default=15,
+                label_text='Smoothing window length:',
+                param_name='smooth_winlen'
+            ),
+            TextParameterWidget(
+                default='rolling_ball',
+                label_text='Output spectrum name:',
+                param_name='out_name'
+            )
+        ]
+    
+    def execute(self, parameters):
+        new_spec = parameters['spectrum'].apply_spec(
+            rolling_ball,
+            parameters['minmax_winlen'],
+            parameters['smooth_winlen'],
+        )
+        new_spec.name = parameters['out_name']
+
+        self.post_data(data=new_spec)
+    
+    def validate(self):
+        # Both windows must be greater than zero.
+        if self.parameters.minmax_winlen.get_value() <= 0 or\
+           self.parameters.smooth_winlen.get_value() <= 0:
+            self.show_error('Both window lengths must be greater than zero.')
             return False
 
         return True
