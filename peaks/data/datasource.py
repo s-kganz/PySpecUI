@@ -71,6 +71,21 @@ class DataSource(object):
         '''
         return {m.id: m for m in self.traces if isinstance(m, Model)}
 
+    def get_unique_name(self, name):
+        '''
+        Returns a modified version of name that is unique from all other traces
+        in the application.
+        '''
+        while any(name == t.name for t in self.traces):
+            if str.isnumeric(name[-1]):
+                # Increment number at the end of the name
+                newnum = int(name[-1]) + 1
+                name = name[:-1] + str(newnum)
+            else:
+                name = name + '_1'
+        
+        return name
+
     def get_next_task(self):
         try:
             data = self._ingest_queue.get(block=False)

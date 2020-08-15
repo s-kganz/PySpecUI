@@ -26,7 +26,8 @@ class GaussModelDialog(ParameterListDialog):
                 param_name='poly_order',
                 default=2
             ),
-            TextParameterWidget(
+            SpectrumNameWidget(
+                self.ds,
                 label_text='Model name:',
                 param_name='model_name',
                 default='gauss'

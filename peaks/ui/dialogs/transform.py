@@ -13,7 +13,8 @@ class ToAbsorbanceDialog(ParameterListDialog):
                 label_text='Spectrum to transform:',
                 param_name='spectrum'
             ),
-            TextParameterWidget(
+            SpectrumNameWidget(
+                self.ds,
                 default='absorbance',
                 label_text='Output spectrum name:',
                 param_name='name'
@@ -39,7 +40,8 @@ class ToTransmittanceDialog(ParameterListDialog):
                 label_text='Spectrum to transform:',
                 param_name='spectrum'
             ),
-            TextParameterWidget(
+            SpectrumNameWidget(
+                self.ds,
                 default='transmittance',
                 label_text='Output spectrum name:',
                 param_name='name'
@@ -75,7 +77,8 @@ class RescaleDialog(ParameterListDialog):
                 label_text='Maximum value:',
                 param_name='new_max'
             ),
-            TextParameterWidget(
+            SpectrumNameWidget(
+                self.ds,
                 default='rescaled',
                 label_text='Output spectrum name:',
                 param_name='name'

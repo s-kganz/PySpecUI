@@ -12,7 +12,8 @@ from os.path import expanduser
 
 __all__ = ['IntegerParameterWidget', 'FloatParameterWidget', 'TextParameterWidget',
            'ChoiceParameterWidget', 'SpectrumParameterWidget', 'FileParameterWidget',
-           'FloatSliderParameterWidget', 'AccordionSlider', 'CheckBoxParameterWidget']
+           'FloatSliderParameterWidget', 'AccordionSlider', 'CheckBoxParameterWidget',
+           'SpectrumNameWidget']
 
 class AbstractParameterWidget(BoxLayout):
     '''
@@ -50,6 +51,28 @@ class TextParameterWidget(AbstractParameterWidget):
 
     def get_value(self):
         return self.field.text
+    
+    def set_value(self, new):
+        self.field.text = new
+
+class SpectrumNameWidget(AbstractParameterWidget):
+    '''
+    Text input that makes spectrum names unique using
+    the data source.
+    '''
+    def __init__(self, ds, default='', on_change=None, **kwargs):
+        super().__init__(**kwargs)
+        self.ds = ds
+        w = TextInput(
+            multiline = False,
+            text=default
+        )
+        if callable(on_change): w.bind(text = on_change)
+        self.field = w
+        self.ids['layout'].add_widget(w)
+
+    def get_value(self):
+        return self.ds.get_unique_name(self.field.text)
     
     def set_value(self, new):
         self.field.text = new

@@ -26,7 +26,8 @@ class BoxcarSmoothDialog(ParameterListDialog):
                 label_text='Window length (in points):',
                 param_name='winlen'
             ),
-            TextParameterWidget(
+            SpectrumNameWidget(
+                self.ds,
                 default='smoothed_boxcar',
                 label_text='Output spectrum name:',
                 param_name='output_name'
@@ -66,7 +67,8 @@ class TriangleSmoothDialog(ParameterListDialog):
                 label_text='Window length (in points):',
                 param_name='winlen'
             ),
-            TextParameterWidget(
+            SpectrumNameWidget(
+                self.ds,
                 default='smoothed_triangular',
                 label_text='Output spectrum name:',
                 param_name='output_name'
@@ -116,7 +118,8 @@ class GaussianSmoothDialog(ParameterListDialog):
                 label_text='Peak width:',
                 param_name='sigma'
             ),
-            TextParameterWidget(
+            SpectrumNameWidget(
+                self.ds,
                 default='smoothed_gaussian',
                 label_text='Output spectrum name:',
                 param_name='output_name'
@@ -163,7 +166,8 @@ class SavgolSmoothDialog(ParameterListDialog):
                 label_text='Polynomial Order:',
                 param_name='polyorder'
             ),
-            TextParameterWidget(
+            SpectrumNameWidget(
+                self.ds,
                 default='smoothed_savgol',
                 label_text='Output spectrum name:',
                 param_name='output_name'
@@ -225,7 +229,8 @@ class PolynomialBaselineDialog(ParameterListDialog):
                 label_text='Invert baseline region:',
                 param_name='invert'
             ),
-            TextParameterWidget(
+            SpectrumNameWidget(
+                self.ds,
                 default='detrended',
                 label_text='Output spectrum name:',
                 param_name='name'
@@ -279,7 +284,8 @@ class RollingBallDialog(ParameterListDialog):
                 label_text='Smoothing window length:',
                 param_name='smooth_winlen'
             ),
-            TextParameterWidget(
+            SpectrumNameWidget(
+                self.ds,
                 default='rolling_ball',
                 label_text='Output spectrum name:',
                 param_name='out_name'
