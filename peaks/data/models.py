@@ -277,19 +277,19 @@ class ModelGauss(Model, Trace):
         for i in range(0, len(self.params), 3):
             ret["Peak {}".format(i // 3 + 1)] = {
                     'Height': {
-                        'type': 'float',
+                        'type': float,
                         'min': 0,
                         'max': max(self.spectrum.gety()),
                         'value': self.params[i]
                     },
                     'Center': {
-                        'type': 'float',
+                        'type': float,
                         'min': 0,
                         'max': max(self.spectrum.getx()),
                         'value': self.params[i+1]
                     },
                     'Width': {
-                        'type': 'float',
+                        'type': float,
                         'min': 0,
                         'max': max(self.spectrum.getx()),
                         'value': self.params[i+2]

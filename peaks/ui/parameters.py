@@ -207,13 +207,13 @@ class AccordionSlider(GridLayout):
     param_label = StringProperty(None)
     param_value = NumericProperty(None)
     callback = ObjectProperty(None)
-    def __init__(self, callback, *args, type='float', param_label='', min=0, 
+    def __init__(self, callback, *args, type=float, param_label='', min=0, 
                  max=100, value=50, **kwargs):
         super().__init__(**kwargs)
         self.param_label = param_label
         self.slider.min = min
         self.slider.max = max
-        self.slider.step = (0.1 if type == 'float' else 1)
+        self.slider.step = (0.1 if type == float else 1)
         self.slider.value = float(around(value, decimals=1))
         self.callback = callback
     
