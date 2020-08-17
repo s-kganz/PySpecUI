@@ -6,6 +6,7 @@ Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
 
 # -- Core kivy modules --
 from kivy.app import App
+from kivy.core.window import Window
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.boxlayout import BoxLayout
 from kivy.properties import ObjectProperty, StringProperty
@@ -42,7 +43,11 @@ class MyLayout(FloatLayout):
 class PySpecApp(App):
     def __init__(self):
         super().__init__()
+        # Create data manager
         self.ds = DataSource()
+        # Bind keyboard input
+        Window.bind(on_key_down=self._on_key_down)
+        # Create threading members
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         self._thread_future = None
         self._thread_clock_event = None
@@ -109,6 +114,9 @@ class PySpecApp(App):
     
     def remove_tab(self, tab):
         self.layout.tabs.remove_widget(tab)
+    
+    def _on_key_down(self, *args):
+        _, code1, code2, text, mods = args
 
 def start_application():
     PySpecApp().run()

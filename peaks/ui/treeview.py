@@ -89,6 +89,6 @@ class DataTreeView(TreeView):
         '''
         Set up primary headers.
         '''
-        for header in ["Spectra", "Models", "Tool Chains"]:
+        for header in ["Spectra", "Models"]:
             node = self.add_node(TreeViewLabel(text=header))
             self.headers.append(node)

@@ -101,6 +101,8 @@
                 # Graphing partner widgets
                 BoxLayout:
                     orientation: 'horizontal'
+                    Label:
+                        text: 'history'
                     BoxLayout:
                         orientation: 'vertical'
                         BoxLayout:
@@ -125,7 +127,6 @@
                         tab_height: 30
                         id: tab_panel
                         default_tab: hierarchy_tab
-                        size_hint_x: 0.5
                         # Show all data in the application
                         TabbedPanelItem:
                             id: hierarchy_tab
