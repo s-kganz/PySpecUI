@@ -48,8 +48,9 @@ class PySpecApp(App):
         # Bind keyboard input
         Window.bind(on_key_down=self._on_key_down)
         # Create threading members
+        self.history = []
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-        self._thread_future = None
+        self._thread_futures = []
         self._thread_clock_event = None
         # subscribe member functions
         pub.subscribe(self._launch_in_thread, 'Data.StartThread')
@@ -58,42 +59,60 @@ class PySpecApp(App):
         self.layout = MyLayout()
         return self.layout
 
-    def _launch_in_thread(self, caller):
+    def _launch_in_thread(self, tool_run):
         '''
         Submit a new task to the other thread if it is not already
         busy. Might increase the number of threads in the future.
         '''
-        if self._thread_future is None or not self._thread_future.running():
-            self._thread_future = self.executor.submit(
-                caller
-            )
+        self._thread_futures.append(
+            (self.executor.submit(
+                tool_run.get_call()
+            ),
+            tool_run)
+        )
+        self.history.append(tool_run)
+        if self._thread_clock_event is None:
             self._thread_clock_event = Clock.schedule_interval(
                 self._check_thread_status, 0.5
             )
-        else:
-            print("Another thread is currently running!")
 
     def _check_thread_status(self, *args):
         '''
         Scheduled on the clock when a thread is running. This function
-        checks for new data posted from a thread in one of two ways:
-        either as a return value or as a posting to the data manager.
-        '''        
-        # If the queue is empty and the thread finished, unschedule
-        if self._thread_future.done():
-            # Thread either errored out or finished, see which
-            maybe_e = self._thread_future.exception()
-            if maybe_e is not None:
-                raise maybe_e
-            
-            # If all data has been ingested, we can unschedule
-            if self.ds._ingest_queue.empty():
-                Clock.unschedule(self._thread_clock_event)
-        # Check if data is posted
+        updates status for all threads and checks the data manager for new
+        data to be ingested.
+        '''
+        i = 0
+        while i < len(self._thread_futures):
+            future, tool_run = self._thread_futures[i]
+            # If the queue is empty and the thread finished, unschedule
+            if future.done():
+                # Thread either errored out or finished, see which
+                maybe_e = future.exception()
+                if maybe_e is not None:
+                    tool_run.status = 'failed'
+                    tool_run.append_status(str(maybe_e))
+                    raise maybe_e
+                else:
+                    tool_run.status = 'succeeded'
+                
+                self._thread_futures.pop(i)
+            else:
+                i += 1
+
+            self._check_new_data()
+
+    def _check_new_data(self):
+        '''
+        Check for new data from the data manager. Ingest if any
+        was found.
+        '''
         newdata = self.ds.get_next_task()
         if newdata is not None:
             self._ingest_thread_result(newdata)
-        
+        elif len(self._thread_futures) == 0:
+            Clock.unschedule(self._thread_clock_event)
+            self._thread_clock_event = None
 
     def _ingest_thread_result(self, data):
         # Add new data from the other thread into the

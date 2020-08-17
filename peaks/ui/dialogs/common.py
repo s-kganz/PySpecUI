@@ -52,9 +52,8 @@ class ParameterListDialog(Popup):
             name:value for (name, value) in \
             map(lambda p: p.get_parameter_tuple(), self.ids['content_area'].children)
         }
-        # Wrap the call in a lambda, start in own thread
-        pub.sendMessage('Data.StartThread', caller=lambda: self.execute(param_values))
-        # Finally, close the dialog
+        tr = ToolRun(self.ds, type(self), param_values)
+        tr.start()
         self.dismiss()
 
     def define_parameters(self):
@@ -64,7 +63,7 @@ class ParameterListDialog(Popup):
         '''
         return []
     
-    def execute(self, parameters):
+    def execute(parameters):
         '''
         Function that implements tool execution. Parameters is a dictionary
         where keys are parameter name and values are parameter value.
@@ -109,3 +108,31 @@ class LoadDialog(Popup):
             f = ''
         path = os.path.join(self.filechooser.path, f)
         self.callback.text = path
+
+class ToolRun(object):
+    '''
+    Retain information about a particular tool execution's parameters
+    and whether the execution was successful or not.
+    '''
+    def __init__(self, ds, tool, parameters):
+        self.Tool = tool
+        self.ds = ds
+        self.parameters = parameters
+        self.status_text = ""
+        self.status = None
+    
+    def start(self):
+        pub.sendMessage('Data.StartThread', tool_run=self)
+        self.status = 'running'
+
+    def get_call(self):
+        return lambda: self.Tool.execute(self, self.parameters)
+    
+    def post_data(self, data):
+        pub.sendMessage('Data.Post', data=data)
+    
+    def append_status(self, message):
+        self.status_text += "\n" + message
+    
+    def create_dialog(self):
+        t = self.Tool(ds, title='A tool')

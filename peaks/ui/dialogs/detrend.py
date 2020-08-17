@@ -41,14 +41,15 @@ class BoxcarSmoothDialog(ParameterListDialog):
         
         return True
     
-    def execute(self, parameters):
+    @staticmethod
+    def execute(app, parameters):
         new_spec = parameters['spectrum'].apply_spec(
             boxcar_smooth,
             parameters['winlen']
         )
         new_spec.name = parameters['output_name']
 
-        self.post_data(data=new_spec)
+        app.post_data(data=new_spec)
 
 class TriangleSmoothDialog(ParameterListDialog):
     '''
@@ -82,14 +83,15 @@ class TriangleSmoothDialog(ParameterListDialog):
         
         return True
     
-    def execute(self, parameters):
+    @staticmethod
+    def execute(app, parameters):
         new_spec = parameters['spectrum'].apply_spec(
             triangular_smooth,
             parameters['winlen']
         )
         new_spec.name = parameters['output_name']
 
-        self.post_data(data=new_spec)
+        app.post_data(data=new_spec)
 
 class GaussianSmoothDialog(ParameterListDialog):
     '''
@@ -133,7 +135,8 @@ class GaussianSmoothDialog(ParameterListDialog):
         
         return True
     
-    def execute(self, parameters):
+    @staticmethod
+    def execute(app, parameters):
         new_spec = parameters['spectrum'].apply_spec(
             gaussian_smooth,
             parameters['winlen'],
@@ -142,7 +145,7 @@ class GaussianSmoothDialog(ParameterListDialog):
         )
         new_spec.name = parameters['output_name']
 
-        self.post_data(data=new_spec)
+        app.post_data(data=new_spec)
 
 class SavgolSmoothDialog(ParameterListDialog):
     '''
@@ -187,7 +190,8 @@ class SavgolSmoothDialog(ParameterListDialog):
         
         return True
     
-    def execute(self, parameters):
+    @staticmethod
+    def execute(app, parameters):
         new_spec = parameters['spectrum'].apply_spec(
             savgol_filter,
             parameters['winlen'],
@@ -195,7 +199,7 @@ class SavgolSmoothDialog(ParameterListDialog):
         )
         new_spec.name = parameters['output_name']
 
-        self.post_data(data=new_spec)
+        app.post_data(data=new_spec)
 
 class PolynomialBaselineDialog(ParameterListDialog):
     '''
@@ -237,7 +241,8 @@ class PolynomialBaselineDialog(ParameterListDialog):
             )
         ]
     
-    def execute(self, parameters):
+    @staticmethod
+    def execute(app, parameters):
         new_spec = parameters['spectrum'].apply_spec_freq(
             polynomial_detrend,
             parameters['lower_bound'],
@@ -247,7 +252,7 @@ class PolynomialBaselineDialog(ParameterListDialog):
         )
         new_spec.name = parameters['name']
 
-        self.post_data(data=new_spec)
+        app.post_data(data=new_spec)
     
     def validate(self):
         # Degree must be greater than zero
@@ -292,7 +297,8 @@ class RollingBallDialog(ParameterListDialog):
             )
         ]
     
-    def execute(self, parameters):
+    @staticmethod
+    def execute(app, parameters):
         new_spec = parameters['spectrum'].apply_spec(
             rolling_ball,
             parameters['minmax_winlen'],
@@ -300,7 +306,7 @@ class RollingBallDialog(ParameterListDialog):
         )
         new_spec.name = parameters['out_name']
 
-        self.post_data(data=new_spec)
+        app.post_data(data=new_spec)
     
     def validate(self):
         # Both windows must be greater than zero.

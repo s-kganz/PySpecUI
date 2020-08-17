@@ -34,14 +34,16 @@ class GaussModelDialog(ParameterListDialog):
             )
         ]
     
-    def execute(self, parameters):
+    @staticmethod
+    def execute(app, parameters):
         m = ModelGauss(parameters['spectrum'], None, name=parameters['model_name'])
         guess = m.guess_parameters(**parameters)
         try:
             assert(m.fit(guess))
         except AssertionError:
             raise RuntimeError("Model fitting failed.")
-        self.post_data(data=m)
+        m.name = 'gauss'
+        app.post_data(data=m)
     
     def validate(self):
         # Validate savgol polynomial degree

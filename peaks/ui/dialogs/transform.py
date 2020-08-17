@@ -21,13 +21,14 @@ class ToAbsorbanceDialog(ParameterListDialog):
             )
         ]
     
-    def execute(self, parameters):
+    @staticmethod
+    def execute(app, parameters):
         new_spec = parameters['spectrum'].apply_spec(
             to_absorbance
         )
         new_spec.name = paramters['name']
         
-        self.post_data(data=new_spec)
+        app.post_data(data=new_spec)
 
 class ToTransmittanceDialog(ParameterListDialog):
     '''
@@ -48,13 +49,14 @@ class ToTransmittanceDialog(ParameterListDialog):
             )
         ]
     
-    def execute(self, parameters):
+    @staticmethod
+    def execute(app, parameters):
         new_spec = parameters['spectrum'].apply_spec(
             to_transmittance
         )
         new_spec.name = parameters['name']
 
-        self.post_data(data=new_spec)
+        app.post_data(data=new_spec)
 
 class RescaleDialog(ParameterListDialog):
     '''
@@ -91,11 +93,12 @@ class RescaleDialog(ParameterListDialog):
             return False
         return True
 
-    def execute(self, parameters):
+    @staticmethod
+    def execute(app, parameters):
         new_spec = parameters['spectrum'].apply_spec(
             rescale,
             parameters['new_min'],
             parameters['new_max']
         )
         new_spec.name = parameters['name']
-        self.post_data(data=new_spec)
+        app.post_data(data=new_spec)
