@@ -26,7 +26,7 @@ class ToAbsorbanceDialog(ParameterListDialog):
         new_spec = parameters['spectrum'].apply_spec(
             to_absorbance
         )
-        new_spec.name = paramters['name']
+        new_spec.name = parameters['name']
         
         app.post_data(data=new_spec)
 
@@ -88,7 +88,7 @@ class RescaleDialog(ParameterListDialog):
         ]
     
     def validate(self):
-        if not self.parameters.new_min.get_value() < self.parameters.new_max.get_value():
+        if not self.parameters['new_min'].get_value() < self.parameters['new_max'].get_value():
             self.show_error('New minimum must be strictly less than the new maximum.')
             return False
         return True

@@ -47,13 +47,13 @@ class GaussModelDialog(ParameterListDialog):
     
     def validate(self):
         # Validate savgol polynomial degree
-        if not self.parameters.poly_order.get_value() > 0:
+        if not self.parameters['poly_order'].get_value() > 0:
             self.show_error('Sav-Gol polynomial must have degree greater than zero.')
             return False
         
         # Validate peak min/max value
-        peak_min = self.parameters.peak_min.get_value()
-        peak_max = self.parameters.peak_max.get_value()
+        peak_min = self.parameters['peak_min'].get_value()
+        peak_max = self.parameters['peak_max'].get_value()
         if any(x < 0 for x in (peak_min, peak_max)):
             self.show_error('Peak min and max must be greater than or equal to zero.')
             return False

@@ -5,12 +5,6 @@ from kivy.uix.popup import Popup
 from kivy.properties import ObjectProperty
 from kivy.clock import Clock
 
-class ParameterNamespace(object):
-    '''
-    Helper object to hold parameter objects in the dialog.
-    '''
-    pass
-
 class ParameterListDialog(Popup):
     '''
     Popup with a scroll view of classes derived from
@@ -21,7 +15,7 @@ class ParameterListDialog(Popup):
 
     def __init__(self, datasource, *args, **kwargs):
         self.ds = datasource
-        self.parameters = ParameterNamespace()
+        self.parameters = dict()
         defaults = dict(
             size_hint = (None, None),
             size = (400, 600),
@@ -39,8 +33,11 @@ class ParameterListDialog(Popup):
         '''
         parameters = self.define_parameters()
         for widget in parameters:
+            # add the widget to the popup
             self.ids['content_area'].add_widget(widget)
-            setattr(self.parameters, widget.param_name, widget)
+            if widget.param_name in self.parameters:
+                print("[WARNING] Parameter named {} already exists.".format(widget.param_name))
+            self.parameters[widget.param_name] = widget
     
     def _execute(self):
         '''
@@ -72,7 +69,7 @@ class ParameterListDialog(Popup):
 
     def validate(self):
         '''
-        Use the self.ns object to access paramters as attributes, show error
+        Use the self.parameters object to access paramters as attributes, show error
         text as necessary
         '''
         return True

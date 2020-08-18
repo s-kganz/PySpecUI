@@ -35,7 +35,7 @@ class BoxcarSmoothDialog(ParameterListDialog):
         ]
     
     def validate(self):
-        if self.parameters.winlen.get_value() <= 0:
+        if self.parameters['winlen'].get_value() <= 0:
             self.show_error('Window length must be greater than zero.')
             return False
         
@@ -77,7 +77,7 @@ class TriangleSmoothDialog(ParameterListDialog):
         ]
     
     def validate(self):
-        if self.parameters.winlen.get_value() <= 0:
+        if self.parameters['winlen'].get_value() <= 0:
             self.show_error('Window length must be greater than zero.')
             return False
         
@@ -129,7 +129,7 @@ class GaussianSmoothDialog(ParameterListDialog):
         ]
     
     def validate(self):
-        if self.parameters.winlen.get_value() <= 0:
+        if self.parameters['winlen'].get_value() <= 0:
             self.show_error('Window length must be greater than zero.')
             return False
         
@@ -178,13 +178,13 @@ class SavgolSmoothDialog(ParameterListDialog):
         ]
     
     def validate(self):
-        if self.parameters.winlen.get_value() <= 0:
+        if self.parameters['winlen'].get_value() <= 0:
             self.show_error('Window length must be greater than zero.')
             return False
-        if not self.parameters.winlen.get_value() % 2:
+        if not self.parameters['winlen'].get_value() % 2:
             self.show_error('Window length must be odd.')
             return False
-        if not self.parameters.polyorder.get_value() >= 0:
+        if not self.parameters['polyorder'].get_value() >= 0:
             self.show_error('Polynomial order must be greater than zero.')
             return False
         
@@ -256,12 +256,12 @@ class PolynomialBaselineDialog(ParameterListDialog):
     
     def validate(self):
         # Degree must be greater than zero
-        if not self.parameters.degree.get_value() > 0:
+        if not self.parameters['degree'].get_value() > 0:
             self.show_error('Baseline degree must be greater than zero.')
             return False
         
         # Lower/upper bounds must be ordered right
-        if not self.parameters.lower_bound.get_value() <= self.parameters.upper_bound.get_value():
+        if not self.parameters['lower_bound'].get_value() <= self.parameters['upper_bound'].get_value():
             self.show_error('Upper bound of baseline must be greater than the lower bound.')
             return False
 
@@ -310,8 +310,8 @@ class RollingBallDialog(ParameterListDialog):
     
     def validate(self):
         # Both windows must be greater than zero.
-        if self.parameters.minmax_winlen.get_value() <= 0 or\
-           self.parameters.smooth_winlen.get_value() <= 0:
+        if self.parameters['minmax_winlen'].get_value() <= 0 or\
+           self.parameters['smooth_winlen'].get_value() <= 0:
             self.show_error('Both window lengths must be greater than zero.')
             return False
 
