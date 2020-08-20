@@ -12,7 +12,28 @@
 #: include dialogs.kv
 #: include parameters.kv
 #: include treeview.kv
+#: include history.kv
 
+#: set TAB_HEIGHT 30
+
+# Separators
+<Separator@Widget>:
+    canvas:
+        Color:
+            rgba: 0.18, 0.62, 0.78, 1
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+<HorizontalSeparator@Separator>:
+    size_hint_y: None
+    height: dp(2)
+
+<VerticalSeparator@Separator>:
+    size_hint_x: None
+    width: dp(2)
+
+# Tuning dialogs
 <TunerTabItem>:
     min_content_area_height: 250
     content_area: content_area
@@ -41,7 +62,7 @@
                 text: 'OK'
                 on_release: app.remove_tab(root)
 
-
+# Plottable objects in the tree view
 <TreeViewPlottable>:
     check: check
     text: 'An unnamed spectrum.' # Set during instantiation
@@ -101,8 +122,7 @@
                 # Graphing partner widgets
                 BoxLayout:
                     orientation: 'horizontal'
-                    Label:
-                        text: 'history'
+                    History:
                     BoxLayout:
                         orientation: 'vertical'
                         BoxLayout:
@@ -122,9 +142,8 @@
                         Label:
                             text: 'drawing widgets'
                     DynamicTabbedPanel:
-                        # Update this value with the number of tabs
                         tab_width: 100
-                        tab_height: 30
+                        tab_height: TAB_HEIGHT
                         id: tab_panel
                         default_tab: hierarchy_tab
                         # Show all data in the application

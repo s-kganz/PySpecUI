@@ -1,0 +1,85 @@
+#: kivy 1.11.1
+#: set HISTORY_ENTRY_SIZE 50
+<HistoryEntry@BoxLayout>:
+    status: status
+    name: 'Entry #1'
+    orientation: 'horizontal'
+    size_hint_y: None
+    height: HISTORY_ENTRY_SIZE
+    canvas.before:
+        Color:
+            rgba: 0.18, 0.18, 0.18, 1
+        Rectangle:
+            pos: self.pos
+            size: self.size
+    Button:
+        id: status
+        text: '...'
+        size_hint_x: None
+        width: HISTORY_ENTRY_SIZE
+    VerticalSeparator:
+    BoxLayout:
+        padding: 5
+        orientation: 'vertical'
+        Label:
+            markup: True
+            halign: 'left'
+            text_size: self.size
+            text: "[i]{}[/i]".format(root.name)
+        Label:
+            text_size: self.size
+            halign: 'left'
+            text: 'Finished at 9:30'
+
+
+<History@BoxLayout>:
+    entry_layout: entry_layout
+    padding: 5
+    orientation: 'vertical'
+    Label:
+        text_size: self.size
+        text: 'History'
+        halign: 'left'
+        size_hint_y: None
+        height: TAB_HEIGHT
+    HorizontalSeparator:
+    ScrollView:
+        id: content_area
+        canvas.before:
+            Color:
+                rgba: 0.1, 0.1, 0.1, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        StackLayout:
+            id: entry_layout
+            orientation: 'tb-rl'
+            size_hint_y: None
+            padding: 5
+            spacing: 5
+            height: max(self.parent.height, len(self.children) * (HISTORY_ENTRY_SIZE + self.padding[0]) + self.spacing[0])
+            HistoryEntry:
+                name: 'Entry #1'
+            HistoryEntry:
+                name: 'Entry #2'
+            HistoryEntry:
+                name: 'Entry #2'
+            HistoryEntry:
+                name: 'Entry #2'
+            HistoryEntry:
+                name: 'Entry #2'
+            HistoryEntry:
+                name: 'Entry #2'
+            HistoryEntry:
+                name: 'Entry #2'
+            HistoryEntry:
+                name: 'Entry #2'
+            HistoryEntry:
+                name: 'Entry #2'
+            HistoryEntry:
+                name: 'Entry #2'
+            HistoryEntry:
+                name: 'Entry #2'
+
+
+

@@ -92,7 +92,7 @@ class PySpecApp(App):
                 if maybe_e is not None:
                     tool_run.status = 'failed'
                     tool_run.append_status(str(maybe_e))
-                    raise maybe_e
+                    print('[ERROR  ]: {}'.format(str(maybe_e)))
                 else:
                     tool_run.status = 'succeeded'
                 
