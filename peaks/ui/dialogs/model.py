@@ -1,3 +1,5 @@
+from kivy.properties import StringProperty
+
 from .common import ParameterListDialog
 from peaks.ui.parameters import *
 from peaks.data.models import ModelGauss
@@ -6,6 +8,7 @@ class GaussModelDialog(ParameterListDialog):
     '''
     Dialog for creating a gaussian model of a spectrum.
     '''
+    title = StringProperty('Fit Gaussian peaks...')
     def define_parameters(self):
         return [
             SpectrumParameterWidget(

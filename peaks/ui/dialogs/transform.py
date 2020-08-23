@@ -1,3 +1,5 @@
+from kivy.properties import StringProperty
+
 from .common import ParameterListDialog
 from peaks.ui.parameters import *
 from peaks.tools.transform import rescale, to_absorbance, to_transmittance
@@ -6,6 +8,7 @@ class ToAbsorbanceDialog(ParameterListDialog):
     '''
     Dialog for converting a transmittance spectrum to an absorbance spectrum.
     '''
+    title = StringProperty('To absorbance...')
     def define_parameters(self):
         return [
             SpectrumParameterWidget(
@@ -34,6 +37,7 @@ class ToTransmittanceDialog(ParameterListDialog):
     '''
     Dialog for converting a transmittance spectrum to an absorbance spectrum.
     '''
+    title = StringProperty('To transmittance...')
     def define_parameters(self):
         return [
             SpectrumParameterWidget(
@@ -62,6 +66,7 @@ class RescaleDialog(ParameterListDialog):
     '''
     Dialog for converting a transmittance spectrum to an absorbance spectrum.
     '''
+    title = StringProperty('Rescale...')
     def define_parameters(self):
         return [
             SpectrumParameterWidget(

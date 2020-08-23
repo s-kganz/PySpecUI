@@ -1,3 +1,5 @@
+from kivy.properties import StringProperty
+
 from .common import ParameterListDialog
 from peaks.ui.parameters import *
 from peaks.tools.detrend import (
@@ -14,6 +16,7 @@ class BoxcarSmoothDialog(ParameterListDialog):
     Dialog for generating a spectrum smoothed by a moving
     average.
     '''
+    title = StringProperty('Boxcar filter...')
     def define_parameters(self):
         return [
             SpectrumParameterWidget(
@@ -56,6 +59,7 @@ class TriangleSmoothDialog(ParameterListDialog):
     Dialog for generating a spectrum smoothed by convolution
     with a triangular window.
     '''
+    title = StringProperty('Triangular filter...')
     def define_parameters(self):
         return [
             SpectrumParameterWidget(
@@ -98,6 +102,7 @@ class GaussianSmoothDialog(ParameterListDialog):
     Dialog for generating a spectrum smoothed by convolution
     with a Gaussian window.
     '''
+    title = StringProperty('Gaussian filter...')
     def define_parameters(self):
         return [
             SpectrumParameterWidget(
@@ -152,6 +157,7 @@ class SavgolSmoothDialog(ParameterListDialog):
     Dialog for generating a spectrum smoothed by convolution
     with a Gaussian window.
     '''
+    title = StringProperty('Savitsky-Golay filter...')
     def define_parameters(self):
         return [
             SpectrumParameterWidget(
@@ -205,6 +211,7 @@ class PolynomialBaselineDialog(ParameterListDialog):
     '''
     Dialog for removing a simple polynomial baseline from a dialog.
     '''
+    title = StringProperty('Polynomial detrend...')
     def define_parameters(self):
         return [
             SpectrumParameterWidget(
@@ -272,6 +279,7 @@ class RollingBallDialog(ParameterListDialog):
     Dialog for applying the rolling ball smoothing algorithm
     to a spectrum.
     '''
+    title = StringProperty('Rolling Ball filter...')
     def define_parameters(self):
         return [
            SpectrumParameterWidget(
@@ -299,6 +307,8 @@ class RollingBallDialog(ParameterListDialog):
     
     @staticmethod
     def execute(app, parameters):
+        import time
+        time.sleep(5)
         new_spec = parameters['spectrum'].apply_spec(
             rolling_ball,
             parameters['minmax_winlen'],
