@@ -84,6 +84,7 @@
     tree: hierarchy
     graph: graph
     tabs: tab_panel
+    history: history
     
     # Container for everything that isn't the app menu
     BoxLayout:
@@ -123,6 +124,7 @@
                 BoxLayout:
                     orientation: 'horizontal'
                     History:
+                        id: history
                     BoxLayout:
                         orientation: 'vertical'
                         BoxLayout:
@@ -189,22 +191,22 @@
             ContextMenu:
                 ContextMenuTextItem:
                     text: "Polynomial detrend..."
-                    on_release: Factory.PolynomialBaselineDialog(app.ds, title=self.text).open()
+                    on_release: Factory.PolynomialBaselineDialog(app.ds).open()
                 ContextMenuTextItem:
                     text: "Boxcar filter..."
-                    on_release: Factory.BoxcarSmoothDialog(app.ds, title=self.text).open()
+                    on_release: Factory.BoxcarSmoothDialog(app.ds).open()
                 ContextMenuTextItem:
                     text: "Triangular filter..."
-                    on_release: Factory.TriangleSmoothDialog(app.ds, title=self.text).open()
+                    on_release: Factory.TriangleSmoothDialog(app.ds).open()
                 ContextMenuTextItem:
                     text: "Gaussian filter..."
-                    on_release: Factory.GaussianSmoothDialog(app.ds, title=self.text).open()
+                    on_release: Factory.GaussianSmoothDialog(app.ds).open()
                 ContextMenuTextItem:
                     text: 'Savitsky-Golay filter...'
-                    on_release: Factory.SavgolSmoothDialog(app.ds, title=self.text).open()
+                    on_release: Factory.SavgolSmoothDialog(app.ds).open()
                 ContextMenuTextItem:
                     text: 'Rolling Ball filter...'
-                    on_release: Factory.RollingBallDialog(app.ds, title=self.text).open()
+                    on_release: Factory.RollingBallDialog(app.ds).open()
         AppMenuTextItem:
             text: 'Transform'
             ContextMenu:
