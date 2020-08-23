@@ -2,8 +2,9 @@ from pubsub import pub
 import os
 
 from kivy.uix.popup import Popup
-from kivy.properties import ObjectProperty
+from kivy.properties import ObjectProperty, StringProperty
 from kivy.clock import Clock
+from kivy.event import EventDispatcher
 
 class ParameterListDialog(Popup):
     '''
@@ -12,6 +13,7 @@ class ParameterListDialog(Popup):
     '''
     button_ok = ObjectProperty(None)
     errlabel = ObjectProperty(None)
+    title = StringProperty('Display Title')
 
     def __init__(self, datasource, *args, **kwargs):
         self.ds = datasource
@@ -19,12 +21,11 @@ class ParameterListDialog(Popup):
         defaults = dict(
             size_hint = (None, None),
             size = (400, 600),
-            title = 'A Dialog',
             auto_dismiss = False
         )
         defaults.update(**kwargs)
         super().__init__(*args, **defaults)
-        Clock.schedule_once(self._build_content_area)
+        self._build_content_area()
     
     def _build_content_area(self, *args):
         '''
@@ -49,7 +50,7 @@ class ParameterListDialog(Popup):
             name:value for (name, value) in \
             map(lambda p: p.get_parameter_tuple(), self.ids['content_area'].children)
         }
-        tr = ToolRun(self.ds, type(self), param_values)
+        tr = ToolRun(self.ds, self, param_values)
         tr.start()
         self.dismiss()
 
@@ -106,21 +107,24 @@ class LoadDialog(Popup):
         path = os.path.join(self.filechooser.path, f)
         self.callback.text = path
 
-class ToolRun(object):
+class ToolRun(EventDispatcher):
     '''
     Retain information about a particular tool execution's parameters
     and whether the execution was successful or not.
     '''
+    status = StringProperty('')
     def __init__(self, ds, tool, parameters):
-        self.Tool = tool
+        self.Tool = type(tool)
         self.ds = ds
+        self.name = tool.title
         self.parameters = parameters
-        self.status_text = ""
-        self.status = None
+        self.message_text = ""
+        self.status = 'Not Started'
+        del tool
     
     def start(self):
         pub.sendMessage('Data.StartThread', tool_run=self)
-        self.status = 'running'
+        self.status = 'Running'
 
     def get_call(self):
         return lambda: self.Tool.execute(self, self.parameters)
@@ -129,7 +133,11 @@ class ToolRun(object):
         pub.sendMessage('Data.Post', data=data)
     
     def append_status(self, message):
-        self.status_text += "\n" + message
+        self.message_text += "\n" + message
     
     def create_dialog(self):
-        t = self.Tool(ds, title='A tool')
+        t = self.Tool(self.ds)
+        for key in self.parameters:
+            t.parameters[key].set_value(self.parameters[key])
+        t.open()
+
