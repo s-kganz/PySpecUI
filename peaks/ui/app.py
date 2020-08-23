@@ -29,7 +29,14 @@ import concurrent
 from ..data.spectrum import Spectrum, Trace
 from ..data.models import Model
 from ..data.datasource import DataSource
-from . import dialogs, parameters, tabpanel, treeview, datagraph
+from . import (
+    dialogs, 
+    parameters, 
+    tabpanel, 
+    treeview, 
+    datagraph,
+    history
+)
 
 class MyLayout(FloatLayout):
     '''
@@ -48,7 +55,6 @@ class PySpecApp(App):
         # Bind keyboard input
         Window.bind(on_key_down=self._on_key_down)
         # Create threading members
-        self.history = []
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         self._thread_futures = []
         self._thread_clock_event = None
@@ -65,12 +71,10 @@ class PySpecApp(App):
         busy. Might increase the number of threads in the future.
         '''
         self._thread_futures.append(
-            (self.executor.submit(
-                tool_run.get_call()
-            ),
+            (self.executor.submit(tool_run.get_call()),
             tool_run)
         )
-        self.history.append(tool_run)
+        self.add_history_entry(tool_run)
         if self._thread_clock_event is None:
             self._thread_clock_event = Clock.schedule_interval(
                 self._check_thread_status, 0.5
@@ -85,16 +89,15 @@ class PySpecApp(App):
         i = 0
         while i < len(self._thread_futures):
             future, tool_run = self._thread_futures[i]
-            # If the queue is empty and the thread finished, unschedule
             if future.done():
                 # Thread either errored out or finished, see which
                 maybe_e = future.exception()
                 if maybe_e is not None:
-                    tool_run.status = 'failed'
+                    tool_run.status = 'Failed'
                     tool_run.append_status(str(maybe_e))
                     print('[ERROR  ]: {}'.format(str(maybe_e)))
                 else:
-                    tool_run.status = 'succeeded'
+                    tool_run.status = 'Succeeded'
                 
                 self._thread_futures.pop(i)
             else:
@@ -136,6 +139,9 @@ class PySpecApp(App):
     
     def _on_key_down(self, *args):
         _, code1, code2, text, mods = args
+    
+    def add_history_entry(self, tr):
+        self.layout.history.add_entry(tr)
 
 def start_application():
     PySpecApp().run()

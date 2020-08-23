@@ -17,6 +17,7 @@
         text: '...'
         size_hint_x: None
         width: HISTORY_ENTRY_SIZE
+        on_press: root.tr.create_dialog()
     VerticalSeparator:
     BoxLayout:
         padding: 5
@@ -25,11 +26,11 @@
             markup: True
             halign: 'left'
             text_size: self.size
-            text: "[i]{}[/i]".format(root.name)
+            text: "[i]{}[/i]".format(root.tr.name)
         Label:
             text_size: self.size
             halign: 'left'
-            text: 'Finished at 9:30'
+            text: root.tr.status
 
 
 <History@BoxLayout>:
@@ -44,7 +45,6 @@
         height: TAB_HEIGHT
     HorizontalSeparator:
     ScrollView:
-        id: content_area
         canvas.before:
             Color:
                 rgba: 0.1, 0.1, 0.1, 1
@@ -58,28 +58,7 @@
             padding: 5
             spacing: 5
             height: max(self.parent.height, len(self.children) * (HISTORY_ENTRY_SIZE + self.padding[0]) + self.spacing[0])
-            HistoryEntry:
-                name: 'Entry #1'
-            HistoryEntry:
-                name: 'Entry #2'
-            HistoryEntry:
-                name: 'Entry #2'
-            HistoryEntry:
-                name: 'Entry #2'
-            HistoryEntry:
-                name: 'Entry #2'
-            HistoryEntry:
-                name: 'Entry #2'
-            HistoryEntry:
-                name: 'Entry #2'
-            HistoryEntry:
-                name: 'Entry #2'
-            HistoryEntry:
-                name: 'Entry #2'
-            HistoryEntry:
-                name: 'Entry #2'
-            HistoryEntry:
-                name: 'Entry #2'
+            
 
 
 
