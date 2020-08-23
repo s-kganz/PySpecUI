@@ -147,7 +147,7 @@ class SpectrumParameterWidget(ChoiceParameterWidget):
         return self.choice_dict[self.field.text]
     
     def set_value(self, new):
-        self.field.text = new
+        self.field.text = str(new)
 
 class FileFieldWidget(BoxLayout):
     '''
