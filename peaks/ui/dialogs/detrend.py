@@ -307,8 +307,6 @@ class RollingBallDialog(ParameterListDialog):
     
     @staticmethod
     def execute(app, parameters):
-        import time
-        time.sleep(5)
         new_spec = parameters['spectrum'].apply_spec(
             rolling_ball,
             parameters['minmax_winlen'],
