@@ -2,6 +2,11 @@
 #: set PARAMETER_HEIGHT 30
 #: import expanduser os.path.expanduser
 
+<DisplayTextInput@TextInput>:
+    background_color: .4, .4, .4, 1
+    foreground_color: 1, 1, 1, 1
+    disabled_foreground_color: 0, 0, 0, 0
+
 <ParameterListDialog>:
     button_ok: button_ok
     errlabel: error
@@ -70,3 +75,59 @@
                 width: 60
                 text: 'OK'
                 on_release: root.post_result(); root.dismiss()
+
+<ToolRunInfo@Popup>:
+    start_time: start_time
+    end_time: end_time
+    param_info: param_info
+    messages: messages
+    size_hint: None, None
+    size: 400, 600
+    BoxLayout:
+        padding: 5
+        spacing: 5
+        orientation: 'vertical'
+        BoxLayout:
+            height: self.parent.height * .9
+            orientation: 'vertical'
+            Label:
+                halign: 'left'
+                text_size: self.size
+                id: start_time
+                height: TAB_HEIGHT
+                size_hint_y: None
+            Label:
+                halign: 'left'
+                text_size: self.size
+                id: end_time
+                height: TAB_HEIGHT
+                size_hint_y: None
+            Label:
+                text_size: self.size
+                text: 'Parameters'
+                halign: 'left'
+                size_hint_y: None
+                height: TAB_HEIGHT
+            HorizontalSeparator:
+            DisplayTextInput:
+                id: param_info
+            Label:
+                text_size: self.size
+                text: 'Messages'
+                halign: 'left'
+                size_hint_y: None
+                height: TAB_HEIGHT
+            HorizontalSeparator:
+            DisplayTextInput:
+                id: messages
+        StackLayout:
+            orientation: 'rl-tb'
+            spacing: 5
+            size_hint_y: None
+            height: min(self.parent.height*.1, 30)
+            Button:
+                id: button_ok
+                size_hint_x: None
+                width: 60
+                text: 'OK'
+                on_release: root.dismiss()
