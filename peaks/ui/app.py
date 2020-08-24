@@ -90,6 +90,8 @@ class PySpecApp(App):
         while i < len(self._thread_futures):
             future, tool_run = self._thread_futures[i]
             if future.done():
+                # Update the tool run object
+                tool_run.finish()
                 # Thread either errored out or finished, see which
                 maybe_e = future.exception()
                 if maybe_e is not None:

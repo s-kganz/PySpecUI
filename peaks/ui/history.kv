@@ -12,13 +12,6 @@
         Rectangle:
             pos: self.pos
             size: self.size
-    Button:
-        id: status
-        text: '...'
-        size_hint_x: None
-        width: HISTORY_ENTRY_SIZE
-        on_press: root.tr.create_dialog()
-    VerticalSeparator:
     BoxLayout:
         padding: 5
         orientation: 'vertical'
@@ -31,6 +24,22 @@
             text_size: self.size
             halign: 'left'
             text: root.tr.status
+    VerticalSeparator:
+    BoxLayout:
+        orientation: 'vertical'
+        width: HISTORY_ENTRY_SIZE
+        size_hint_x: None
+        Button:
+            background_normal: ''
+            background_color: .22, .22, .22, 1
+            text: 'Info'
+            on_release: root.tr.create_info_dialog()
+        Button:
+            background_normal: ''
+            background_color: .22, .22, .22, 1
+            id: status
+            text: 'Open'
+            on_release: root.tr.create_dialog()
 
 
 <History@BoxLayout>:
