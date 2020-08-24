@@ -6,6 +6,7 @@ Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
 
 # -- Core kivy modules --
 from kivy.app import App
+from kivy.core.window import Window
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.boxlayout import BoxLayout
 from kivy.properties import ObjectProperty, StringProperty
@@ -28,7 +29,14 @@ import concurrent
 from ..data.spectrum import Spectrum, Trace
 from ..data.models import Model
 from ..data.datasource import DataSource
-from . import dialogs, parameters, tabpanel, treeview, datagraph
+from . import (
+    dialogs, 
+    parameters, 
+    tabpanel, 
+    treeview, 
+    datagraph,
+    history
+)
 
 class MyLayout(FloatLayout):
     '''
@@ -42,9 +50,13 @@ class MyLayout(FloatLayout):
 class PySpecApp(App):
     def __init__(self):
         super().__init__()
+        # Create data manager
         self.ds = DataSource()
+        # Bind keyboard input
+        Window.bind(on_key_down=self._on_key_down)
+        # Create threading members
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-        self._thread_future = None
+        self._thread_futures = []
         self._thread_clock_event = None
         # subscribe member functions
         pub.subscribe(self._launch_in_thread, 'Data.StartThread')
@@ -53,42 +65,59 @@ class PySpecApp(App):
         self.layout = MyLayout()
         return self.layout
 
-    def _launch_in_thread(self, caller):
+    def _launch_in_thread(self, tool_run):
         '''
         Submit a new task to the other thread if it is not already
         busy. Might increase the number of threads in the future.
         '''
-        if self._thread_future is None or not self._thread_future.running():
-            self._thread_future = self.executor.submit(
-                caller
-            )
+        self._thread_futures.append(
+            (self.executor.submit(tool_run.get_call()),
+            tool_run)
+        )
+        self.add_history_entry(tool_run)
+        if self._thread_clock_event is None:
             self._thread_clock_event = Clock.schedule_interval(
                 self._check_thread_status, 0.5
             )
-        else:
-            print("Another thread is currently running!")
 
     def _check_thread_status(self, *args):
         '''
         Scheduled on the clock when a thread is running. This function
-        checks for new data posted from a thread in one of two ways:
-        either as a return value or as a posting to the data manager.
-        '''        
-        # If the queue is empty and the thread finished, unschedule
-        if self._thread_future.done():
-            # Thread either errored out or finished, see which
-            maybe_e = self._thread_future.exception()
-            if maybe_e is not None:
-                raise maybe_e
-            
-            # If all data has been ingested, we can unschedule
-            if self.ds._ingest_queue.empty():
-                Clock.unschedule(self._thread_clock_event)
-        # Check if data is posted
+        updates status for all threads and checks the data manager for new
+        data to be ingested.
+        '''
+        i = 0
+        while i < len(self._thread_futures):
+            future, tool_run = self._thread_futures[i]
+            if future.done():
+                # Update the tool run object
+                tool_run.finish()
+                # Thread either errored out or finished, see which
+                maybe_e = future.exception()
+                if maybe_e is not None:
+                    tool_run.status = 'Failed'
+                    tool_run.append_status(str(maybe_e))
+                    print('[ERROR  ]: {}'.format(str(maybe_e)))
+                else:
+                    tool_run.status = 'Succeeded'
+                
+                self._thread_futures.pop(i)
+            else:
+                i += 1
+
+            self._check_new_data()
+
+    def _check_new_data(self):
+        '''
+        Check for new data from the data manager. Ingest if any
+        was found.
+        '''
         newdata = self.ds.get_next_task()
         if newdata is not None:
             self._ingest_thread_result(newdata)
-        
+        elif len(self._thread_futures) == 0:
+            Clock.unschedule(self._thread_clock_event)
+            self._thread_clock_event = None
 
     def _ingest_thread_result(self, data):
         # Add new data from the other thread into the
@@ -109,6 +138,12 @@ class PySpecApp(App):
     
     def remove_tab(self, tab):
         self.layout.tabs.remove_widget(tab)
+    
+    def _on_key_down(self, *args):
+        _, code1, code2, text, mods = args
+    
+    def add_history_entry(self, tr):
+        self.layout.history.add_entry(tr)
 
 def start_application():
     PySpecApp().run()

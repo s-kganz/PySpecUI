@@ -1,3 +1,5 @@
+from kivy.properties import StringProperty
+
 from .common import ParameterListDialog
 from peaks.ui.parameters import *
 from peaks.tools.detrend import (
@@ -14,6 +16,7 @@ class BoxcarSmoothDialog(ParameterListDialog):
     Dialog for generating a spectrum smoothed by a moving
     average.
     '''
+    title = StringProperty('Boxcar filter...')
     def define_parameters(self):
         return [
             SpectrumParameterWidget(
@@ -35,26 +38,28 @@ class BoxcarSmoothDialog(ParameterListDialog):
         ]
     
     def validate(self):
-        if self.parameters.winlen.get_value() <= 0:
+        if self.parameters['winlen'].get_value() <= 0:
             self.show_error('Window length must be greater than zero.')
             return False
         
         return True
     
-    def execute(self, parameters):
+    @staticmethod
+    def execute(app, parameters):
         new_spec = parameters['spectrum'].apply_spec(
             boxcar_smooth,
             parameters['winlen']
         )
         new_spec.name = parameters['output_name']
 
-        self.post_data(data=new_spec)
+        app.post_data(data=new_spec)
 
 class TriangleSmoothDialog(ParameterListDialog):
     '''
     Dialog for generating a spectrum smoothed by convolution
     with a triangular window.
     '''
+    title = StringProperty('Triangular filter...')
     def define_parameters(self):
         return [
             SpectrumParameterWidget(
@@ -76,26 +81,28 @@ class TriangleSmoothDialog(ParameterListDialog):
         ]
     
     def validate(self):
-        if self.parameters.winlen.get_value() <= 0:
+        if self.parameters['winlen'].get_value() <= 0:
             self.show_error('Window length must be greater than zero.')
             return False
         
         return True
     
-    def execute(self, parameters):
+    @staticmethod
+    def execute(app, parameters):
         new_spec = parameters['spectrum'].apply_spec(
             triangular_smooth,
             parameters['winlen']
         )
         new_spec.name = parameters['output_name']
 
-        self.post_data(data=new_spec)
+        app.post_data(data=new_spec)
 
 class GaussianSmoothDialog(ParameterListDialog):
     '''
     Dialog for generating a spectrum smoothed by convolution
     with a Gaussian window.
     '''
+    title = StringProperty('Gaussian filter...')
     def define_parameters(self):
         return [
             SpectrumParameterWidget(
@@ -127,13 +134,14 @@ class GaussianSmoothDialog(ParameterListDialog):
         ]
     
     def validate(self):
-        if self.parameters.winlen.get_value() <= 0:
+        if self.parameters['winlen'].get_value() <= 0:
             self.show_error('Window length must be greater than zero.')
             return False
         
         return True
     
-    def execute(self, parameters):
+    @staticmethod
+    def execute(app, parameters):
         new_spec = parameters['spectrum'].apply_spec(
             gaussian_smooth,
             parameters['winlen'],
@@ -142,13 +150,14 @@ class GaussianSmoothDialog(ParameterListDialog):
         )
         new_spec.name = parameters['output_name']
 
-        self.post_data(data=new_spec)
+        app.post_data(data=new_spec)
 
 class SavgolSmoothDialog(ParameterListDialog):
     '''
     Dialog for generating a spectrum smoothed by convolution
     with a Gaussian window.
     '''
+    title = StringProperty('Savitsky-Golay filter...')
     def define_parameters(self):
         return [
             SpectrumParameterWidget(
@@ -175,19 +184,20 @@ class SavgolSmoothDialog(ParameterListDialog):
         ]
     
     def validate(self):
-        if self.parameters.winlen.get_value() <= 0:
+        if self.parameters['winlen'].get_value() <= 0:
             self.show_error('Window length must be greater than zero.')
             return False
-        if not self.parameters.winlen.get_value() % 2:
+        if not self.parameters['winlen'].get_value() % 2:
             self.show_error('Window length must be odd.')
             return False
-        if not self.parameters.polyorder.get_value() >= 0:
+        if not self.parameters['polyorder'].get_value() >= 0:
             self.show_error('Polynomial order must be greater than zero.')
             return False
         
         return True
     
-    def execute(self, parameters):
+    @staticmethod
+    def execute(app, parameters):
         new_spec = parameters['spectrum'].apply_spec(
             savgol_filter,
             parameters['winlen'],
@@ -195,12 +205,13 @@ class SavgolSmoothDialog(ParameterListDialog):
         )
         new_spec.name = parameters['output_name']
 
-        self.post_data(data=new_spec)
+        app.post_data(data=new_spec)
 
 class PolynomialBaselineDialog(ParameterListDialog):
     '''
     Dialog for removing a simple polynomial baseline from a dialog.
     '''
+    title = StringProperty('Polynomial detrend...')
     def define_parameters(self):
         return [
             SpectrumParameterWidget(
@@ -237,7 +248,8 @@ class PolynomialBaselineDialog(ParameterListDialog):
             )
         ]
     
-    def execute(self, parameters):
+    @staticmethod
+    def execute(app, parameters):
         new_spec = parameters['spectrum'].apply_spec_freq(
             polynomial_detrend,
             parameters['lower_bound'],
@@ -247,16 +259,16 @@ class PolynomialBaselineDialog(ParameterListDialog):
         )
         new_spec.name = parameters['name']
 
-        self.post_data(data=new_spec)
+        app.post_data(data=new_spec)
     
     def validate(self):
         # Degree must be greater than zero
-        if not self.parameters.degree.get_value() > 0:
+        if not self.parameters['degree'].get_value() > 0:
             self.show_error('Baseline degree must be greater than zero.')
             return False
         
         # Lower/upper bounds must be ordered right
-        if not self.parameters.lower_bound.get_value() <= self.parameters.upper_bound.get_value():
+        if not self.parameters['lower_bound'].get_value() <= self.parameters['upper_bound'].get_value():
             self.show_error('Upper bound of baseline must be greater than the lower bound.')
             return False
 
@@ -267,6 +279,7 @@ class RollingBallDialog(ParameterListDialog):
     Dialog for applying the rolling ball smoothing algorithm
     to a spectrum.
     '''
+    title = StringProperty('Rolling Ball filter...')
     def define_parameters(self):
         return [
            SpectrumParameterWidget(
@@ -292,7 +305,8 @@ class RollingBallDialog(ParameterListDialog):
             )
         ]
     
-    def execute(self, parameters):
+    @staticmethod
+    def execute(app, parameters):
         new_spec = parameters['spectrum'].apply_spec(
             rolling_ball,
             parameters['minmax_winlen'],
@@ -300,12 +314,12 @@ class RollingBallDialog(ParameterListDialog):
         )
         new_spec.name = parameters['out_name']
 
-        self.post_data(data=new_spec)
+        app.post_data(data=new_spec)
     
     def validate(self):
         # Both windows must be greater than zero.
-        if self.parameters.minmax_winlen.get_value() <= 0 or\
-           self.parameters.smooth_winlen.get_value() <= 0:
+        if self.parameters['minmax_winlen'].get_value() <= 0 or\
+           self.parameters['smooth_winlen'].get_value() <= 0:
             self.show_error('Both window lengths must be greater than zero.')
             return False
 

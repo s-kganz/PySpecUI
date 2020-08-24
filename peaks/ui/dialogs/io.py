@@ -1,3 +1,5 @@
+from kivy.properties import StringProperty
+
 from .common import ParameterListDialog
 from peaks.ui.parameters import *
 from peaks.data.datasource import parse_csv
@@ -6,6 +8,7 @@ class SingleFileLoadDialog(ParameterListDialog):
     '''
     Dialog for loading a single delimited file from the file.
     '''
+    title = StringProperty('Load delimited file...')
     def define_parameters(self):
         return [
             FileParameterWidget(
@@ -50,7 +53,8 @@ class SingleFileLoadDialog(ParameterListDialog):
             )
         ]
 
-    def execute(self, parameters):
+    @staticmethod
+    def execute(app, parameters):
         spectrum = parse_csv(
             delimChoice=parameters['delimChoice'],
             skipCount=parameters['skipCount'],
@@ -61,4 +65,4 @@ class SingleFileLoadDialog(ParameterListDialog):
             specUnit=parameters['specUnit'],
             file=parameters['file']
         )
-        self.post_data(data=spectrum)
+        app.post_data(data=spectrum)

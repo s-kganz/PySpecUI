@@ -1,3 +1,5 @@
+from kivy.properties import StringProperty
+
 from .common import ParameterListDialog
 from peaks.ui.parameters import *
 from peaks.data.models import ModelGauss
@@ -6,6 +8,7 @@ class GaussModelDialog(ParameterListDialog):
     '''
     Dialog for creating a gaussian model of a spectrum.
     '''
+    title = StringProperty('Fit Gaussian peaks...')
     def define_parameters(self):
         return [
             SpectrumParameterWidget(
@@ -34,24 +37,26 @@ class GaussModelDialog(ParameterListDialog):
             )
         ]
     
-    def execute(self, parameters):
+    @staticmethod
+    def execute(app, parameters):
         m = ModelGauss(parameters['spectrum'], None, name=parameters['model_name'])
         guess = m.guess_parameters(**parameters)
         try:
             assert(m.fit(guess))
         except AssertionError:
             raise RuntimeError("Model fitting failed.")
-        self.post_data(data=m)
+        m.name = 'gauss'
+        app.post_data(data=m)
     
     def validate(self):
         # Validate savgol polynomial degree
-        if not self.parameters.poly_order.get_value() > 0:
+        if not self.parameters['poly_order'].get_value() > 0:
             self.show_error('Sav-Gol polynomial must have degree greater than zero.')
             return False
         
         # Validate peak min/max value
-        peak_min = self.parameters.peak_min.get_value()
-        peak_max = self.parameters.peak_max.get_value()
+        peak_min = self.parameters['peak_min'].get_value()
+        peak_max = self.parameters['peak_max'].get_value()
         if any(x < 0 for x in (peak_min, peak_max)):
             self.show_error('Peak min and max must be greater than or equal to zero.')
             return False

@@ -137,7 +137,7 @@ class SpectrumParameterWidget(ChoiceParameterWidget):
     A widget for a dropdown menu of spectra.
     '''  
     def __init__(self, ds, **kwargs):
-        self.choice_dict = {"{} ({})".format(str(s), s.id):s \
+        self.choice_dict = {"{}".format(str(s)):s \
                             for s in ds.get_all_spectra().values()}
         if len(self.choice_dict) == 0:
             self.choice_dict = {"No spectra loaded": None}
@@ -147,8 +147,7 @@ class SpectrumParameterWidget(ChoiceParameterWidget):
         return self.choice_dict[self.field.text]
     
     def set_value(self, new):
-        print('[WARNING] [SpectrumParameterWidget] Setting the value of this widget'
-              'is not supported.')
+        self.field.text = str(new)
 
 class FileFieldWidget(BoxLayout):
     '''

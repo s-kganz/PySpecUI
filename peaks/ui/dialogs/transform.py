@@ -1,3 +1,5 @@
+from kivy.properties import StringProperty
+
 from .common import ParameterListDialog
 from peaks.ui.parameters import *
 from peaks.tools.transform import rescale, to_absorbance, to_transmittance
@@ -6,6 +8,7 @@ class ToAbsorbanceDialog(ParameterListDialog):
     '''
     Dialog for converting a transmittance spectrum to an absorbance spectrum.
     '''
+    title = StringProperty('To absorbance...')
     def define_parameters(self):
         return [
             SpectrumParameterWidget(
@@ -21,18 +24,20 @@ class ToAbsorbanceDialog(ParameterListDialog):
             )
         ]
     
-    def execute(self, parameters):
+    @staticmethod
+    def execute(app, parameters):
         new_spec = parameters['spectrum'].apply_spec(
             to_absorbance
         )
-        new_spec.name = paramters['name']
+        new_spec.name = parameters['name']
         
-        self.post_data(data=new_spec)
+        app.post_data(data=new_spec)
 
 class ToTransmittanceDialog(ParameterListDialog):
     '''
     Dialog for converting a transmittance spectrum to an absorbance spectrum.
     '''
+    title = StringProperty('To transmittance...')
     def define_parameters(self):
         return [
             SpectrumParameterWidget(
@@ -48,18 +53,20 @@ class ToTransmittanceDialog(ParameterListDialog):
             )
         ]
     
-    def execute(self, parameters):
+    @staticmethod
+    def execute(app, parameters):
         new_spec = parameters['spectrum'].apply_spec(
             to_transmittance
         )
         new_spec.name = parameters['name']
 
-        self.post_data(data=new_spec)
+        app.post_data(data=new_spec)
 
 class RescaleDialog(ParameterListDialog):
     '''
     Dialog for converting a transmittance spectrum to an absorbance spectrum.
     '''
+    title = StringProperty('Rescale...')
     def define_parameters(self):
         return [
             SpectrumParameterWidget(
@@ -86,16 +93,17 @@ class RescaleDialog(ParameterListDialog):
         ]
     
     def validate(self):
-        if not self.parameters.new_min.get_value() < self.parameters.new_max.get_value():
+        if not self.parameters['new_min'].get_value() < self.parameters['new_max'].get_value():
             self.show_error('New minimum must be strictly less than the new maximum.')
             return False
         return True
 
-    def execute(self, parameters):
+    @staticmethod
+    def execute(app, parameters):
         new_spec = parameters['spectrum'].apply_spec(
             rescale,
             parameters['new_min'],
             parameters['new_max']
         )
         new_spec.name = parameters['name']
-        self.post_data(data=new_spec)
+        app.post_data(data=new_spec)
